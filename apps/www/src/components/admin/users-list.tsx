@@ -9,7 +9,6 @@ import { format } from "date-fns";
 import { ColumnDef } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
-import { exportAllUsersCsv } from "@/server-actions/admin/user";
 import {
   Bar,
   BarChart,
@@ -28,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { UserSearch } from "./user-search";
 import { useRouter } from "next/navigation";
 import { UserForAdminPage } from "@/server-lib/admin";
+import { CreateUserDialog } from "./create-user-dialog";
 
 export function AdminUsersList({
   totalUsers,
@@ -91,9 +91,7 @@ export function AdminUsersList({
       "Total Threads (All Time)",
       "Total Threads (Last Day)",
       "Total Threads (Last Week)",
-      "Stripe Customer ID",
       "Role",
-      "Banned",
     ];
 
     const rows = users.map((u) => [
@@ -108,9 +106,7 @@ export function AdminUsersList({
       u.numThreads.toString(),
       u.threadsCreatedPastDay.toString(),
       u.threadsCreatedPastWeek.toString(),
-      u.stripeCustomerId || "",
       u.role || "",
-      u.banned ? "Yes" : "No",
     ]);
 
     const csvContent = [
@@ -132,24 +128,6 @@ export function AdminUsersList({
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
-
-  const exportLoopsCSV = async () => {
-    // Server action returns a CSV string with the Loops format
-    const csv = await exportAllUsersCsv({ group: "users" });
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.setAttribute(
-      "download",
-      `terragon-users-loops-${format(new Date(), "yyyy-MM-dd-HHmmss")}.csv`,
-    );
-    link.style.visibility = "hidden";
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const columns: ColumnDef<UserForAdminPage>[] = [
@@ -175,21 +153,6 @@ export function AdminUsersList({
     {
       accessorKey: "email",
       header: "Email",
-    },
-    {
-      accessorKey: "signupTrialDaysRemaining",
-      header: "Trial Days Left",
-      cell: ({ row }) => {
-        const days = row.getValue("signupTrialDaysRemaining") as number;
-        return days > 0 ? days.toString() : "-";
-      },
-    },
-    {
-      accessorKey: "accessTierInfo",
-      header: "Access Tier",
-      cell: ({ row }) => {
-        return row.getValue("accessTierInfo") || "-";
-      },
     },
     {
       accessorKey: "createdAt",
@@ -235,16 +198,6 @@ export function AdminUsersList({
             {u.role && (
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
                 {u.role}
-              </span>
-            )}
-            {u.banned && (
-              <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">
-                Banned
-              </span>
-            )}
-            {u.shadowBanned && (
-              <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                Shadow Ban
               </span>
             )}
           </div>
@@ -606,19 +559,18 @@ export function AdminUsersList({
           </div>
         )}
       </div>
-      <UserSearch
-        onSelectUser={(user) => {
-          router.push(`/internal/admin/user/${user.id}`);
-        }}
-      />
+      <div className="flex justify-between items-center gap-4">
+        <CreateUserDialog />
+        <UserSearch
+          onSelectUser={(user) => {
+            router.push(`/internal/admin/user/${user.id}`);
+          }}
+        />
+      </div>
       <div className="flex justify-end gap-2">
         <Button onClick={exportToCSV} variant="outline" size="sm">
           <Download className="h-4 w-4" />
           Export CSV
-        </Button>
-        <Button onClick={exportLoopsCSV} variant="outline" size="sm">
-          <Download className="h-4 w-4" />
-          Export Loops CSV
         </Button>
       </div>
       <DataTable columns={columns} data={users} />

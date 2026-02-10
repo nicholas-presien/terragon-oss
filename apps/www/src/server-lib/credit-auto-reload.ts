@@ -1,9 +1,13 @@
-// Credit auto-reload has been removed for self-hosted deployment.
-// This stub preserves the export to prevent import errors.
+// Credit auto-reload stub for self-hosted mode.
+// Credit system and auto-reload functionality are not used in self-hosted deployments.
 
-export async function maybeTriggerCreditAutoReload(_opts: {
-  userId: string;
-  balanceCents: number;
-}): Promise<void> {
-  // No-op in self-hosted mode
+/**
+ * Stub for triggering credit auto-reload.
+ * No-op in self-hosted mode as credit system is disabled.
+ */
+export async function maybeTriggerCreditAutoReload(
+  userId: string,
+): Promise<void> {
+  // No-op for self-hosted - credit system not used
+  return;
 }

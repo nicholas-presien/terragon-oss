@@ -1,29 +1,44 @@
-import type {
-  AccessInfo,
-  AccessTier,
-  BillingInfo,
-} from "@terragon/shared/db/types";
+// Subscription stub for self-hosted mode.
+// All users are treated as "pro" tier with full access.
 
-// Self-hosted mode: always grant "pro" tier access, no billing.
+import type { AccessTier } from "@terragon/shared/db/types";
 
-export async function getAccessInfoForUser(
-  _userId: string,
-): Promise<AccessInfo> {
-  return { tier: "pro" };
+export interface AccessInfo {
+  tier: AccessTier;
 }
 
-export async function getBillingInfo(): Promise<BillingInfo> {
+export interface BillingInfo {
+  tier: AccessTier;
+  stripeCustomerId: string | null;
+  trialDaysRemaining: number | null;
+  subscription: null;
+}
+
+/**
+ * Returns access tier information for a user.
+ * In self-hosted mode, all users are treated as "pro" tier.
+ */
+export async function getAccessInfoForUser(
+  userId: string,
+): Promise<AccessInfo> {
   return {
-    hasActiveSubscription: true,
-    subscription: null,
-    signupTrial: null,
-    unusedPromotionCode: false,
-    isShutdownMode: false,
+    tier: "pro",
   };
 }
 
-export async function getBillingInfoForUser(_: {
+/**
+ * Returns billing information for a user.
+ * In self-hosted mode, returns stub data with "pro" tier.
+ */
+export async function getBillingInfoForUser({
+  userId,
+}: {
   userId: string;
 }): Promise<BillingInfo> {
-  return getBillingInfo();
+  return {
+    tier: "pro",
+    stripeCustomerId: null,
+    trialDaysRemaining: null,
+    subscription: null,
+  };
 }

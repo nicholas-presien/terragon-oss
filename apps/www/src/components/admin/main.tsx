@@ -30,11 +30,6 @@ const adminCategories: AdminCategory[] = [
     ],
   },
   {
-    name: "Analytics & Engagement",
-    icon: BarChart3,
-    sections: [{ title: "Feedback", href: "/internal/admin/feedback" }],
-  },
-  {
     name: "Configuration",
     icon: Settings,
     sections: [

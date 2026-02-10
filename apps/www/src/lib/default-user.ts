@@ -12,10 +12,6 @@ export const DEFAULT_USER: User = {
   createdAt: new Date("2024-01-01"),
   updatedAt: new Date("2024-01-01"),
   role: "admin",
-  banned: false,
-  banReason: null,
-  banExpires: null,
-  shadowBanned: false,
 };
 
 export const DEFAULT_SESSION: Session = {

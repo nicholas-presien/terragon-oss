@@ -51,11 +51,6 @@ export const user = pgTable("user", {
   updatedAt: timestamp("updated_at").notNull(),
   // admin plugin fields
   role: text("role"),
-  banned: boolean("banned"),
-  banReason: text("ban_reason"),
-  banExpires: timestamp("ban_expires"),
-  // Shadow ban limits task creation rate without blocking access
-  shadowBanned: boolean("shadow_banned").notNull().default(false),
 });
 
 const threadChatShared = {
@@ -584,32 +579,6 @@ export const threadChatReadStatus = pgTable(
   ],
 );
 
-export const feedback = pgTable(
-  "feedback",
-  {
-    id: text("id")
-      .primaryKey()
-      .default(sql`gen_random_uuid()`),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    type: text("type").$type<"bug" | "feature" | "feedback">().notNull(),
-    message: text("message").notNull(),
-    currentPage: text("current_page").notNull(),
-    resolved: boolean("resolved").notNull().default(false),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (table) => [
-    index("feedback_user_id_index").on(table.userId),
-    index("feedback_type_index").on(table.type),
-    index("feedback_resolved_index").on(table.resolved),
-  ],
-);
-
 export const userFlags = pgTable(
   "user_flags",
   {
@@ -659,7 +628,6 @@ export const userInfoServerSide = pgTable(
     autoReloadLastAttemptAt: timestamp("auto_reload_last_attempt_at"),
     autoReloadLastFailureAt: timestamp("auto_reload_last_failure_at"),
     autoReloadLastFailureCode: text("auto_reload_last_failure_code"),
-    stripeCreditPaymentMethodId: text("stripe_credit_payment_method_id"),
   },
   (table) => [
     uniqueIndex("user_info_server_side_user_id_unique").on(table.userId),

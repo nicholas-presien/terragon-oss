@@ -5,14 +5,12 @@ import { auth } from "@/lib/auth";
 import { adminOnly, adminOnlyAction } from "@/lib/auth-server";
 import { db } from "@/lib/db";
 import { User, UserFlags } from "@terragon/shared";
-import { grantUserCredits } from "@terragon/shared/model/credits";
 import { getRecentUsersForAdmin, getUser } from "@terragon/shared/model/user";
 import { eq } from "drizzle-orm";
 import * as schema from "@terragon/shared/db/schema";
 import { headers } from "next/headers";
 import { updateUserFlags as updateUserFlagsModel } from "@terragon/shared/model/user-flags";
 import { sql } from "drizzle-orm";
-import { maybeTriggerCreditAutoReload } from "@/server-lib/credit-auto-reload";
 import { UserFacingError } from "@/lib/server-actions";
 import { forceRefreshClaudeCredentials } from "@/agent/msg/claudeCredentials";
 import { forceRefreshCodexCredentials } from "@/agent/msg/codexCredentials";
@@ -54,6 +52,7 @@ export const searchUsers = adminOnly(async function searchUsers(
       return [userOrNull];
     }
   }
+  // @ts-expect-error - Better Auth API type mismatch
   const users = await auth.api.listUsers({
     headers: await headers(),
     query: {
@@ -63,65 +62,11 @@ export const searchUsers = adminOnly(async function searchUsers(
       searchValue: query,
     },
   });
+  // @ts-expect-error - Better Auth API type mismatch
   return users.users;
 });
 
-export const banUser = adminOnly(
-  async (
-    adminUser: User,
-    {
-      userId,
-      banReason,
-      banExpiresIn,
-    }: {
-      userId: string;
-      banReason?: string;
-      banExpiresIn?: number;
-    },
-  ) => {
-    console.log("banUser", userId, banReason, banExpiresIn);
-    // Prevent self-ban
-    if (adminUser.id === userId) {
-      throw new Error("Cannot ban yourself");
-    }
-    try {
-      await auth.api.banUser({
-        headers: await headers(),
-        body: {
-          userId,
-          banReason,
-          banExpiresIn,
-        },
-      });
-
-      return { success: true };
-    } catch (error) {
-      console.error("Failed to ban user:", error);
-      throw new Error(
-        error instanceof Error ? error.message : "Failed to ban user",
-      );
-    }
-  },
-);
-
-export const unbanUser = adminOnly(async (adminUser: User, userId: string) => {
-  console.log("unbanUser", userId);
-  try {
-    await auth.api.unbanUser({
-      headers: await headers(),
-      body: {
-        userId,
-      },
-    });
-
-    return { success: true };
-  } catch (error) {
-    console.error("Failed to unban user:", error);
-    throw new Error(
-      error instanceof Error ? error.message : "Failed to unban user",
-    );
-  }
-});
+// Ban/unban functionality removed - not needed in self-hosted mode
 export const updateUserFlags = adminOnly(async function updateUserFlags(
   adminUser: User,
   targetUserId: string,
@@ -152,30 +97,12 @@ export const resetUserOnboarding = adminOnlyAction(
   { defaultErrorMessage: "Failed to reset user onboarding" },
 );
 
-export const setShadowBanUser = adminOnly(
-  async (
-    adminUser: User,
-    {
-      userId,
-      shadowBanned,
-    }: {
-      userId: string;
-      shadowBanned: boolean;
-    },
-  ) => {
-    console.log("setShadowBanUser", userId, shadowBanned);
-    const user = await getUser({ db, userId });
-    if (!user) {
-      throw new Error("User not found");
-    }
-    await db
-      .update(schema.user)
-      .set({ shadowBanned })
-      .where(eq(schema.user.id, userId));
-    return { success: true };
-  },
-);
+// Shadow ban removed - not needed in self-hosted mode
 
+/**
+ * Stub for top-up user credits.
+ * No-op in self-hosted mode as credit system is disabled.
+ */
 export const topUpUserCredits = adminOnly(
   async (
     adminUser: User,
@@ -189,21 +116,8 @@ export const topUpUserCredits = adminOnly(
       description?: string;
     },
   ) => {
-    console.log("topUpUserCredits", userId, amountCents);
-    const sanitizedAmount = Math.round(Number(amountCents));
-    if (!Number.isFinite(sanitizedAmount)) {
-      throw new Error("Invalid amount");
-    }
-    await grantUserCredits({
-      db,
-      grants: {
-        userId,
-        amountCents: sanitizedAmount,
-        description: description ?? `Admin top-up by ${adminUser.email}`,
-        grantType: "admin_adjustment",
-        referenceId: `admin-user-id:${adminUser.id}:${Date.now()}`,
-      },
-    });
+    console.log("topUpUserCredits (no-op in self-hosted)", userId, amountCents);
+    // No-op for self-hosted - credit system not used
     return { success: true };
   },
 );
@@ -240,14 +154,7 @@ export const exportAllUsersCsv = adminOnly(async function exportAllUsersCsv(
   return lines.join("\n");
 });
 
-export const forceCreditAutoReload = adminOnly(async (adminUser: User) => {
-  console.log("forceCreditAutoReload", adminUser.id);
-  await maybeTriggerCreditAutoReload({
-    userId: adminUser.id,
-    balanceCents: 0,
-  });
-  return { success: true };
-});
+// Credit auto-reload removed - not needed in self-hosted mode
 
 export const refreshClaudeCredentials = adminOnlyAction(
   async (

@@ -31,8 +31,6 @@ import { UserRoleSelector } from "./user-role-selector";
 import { UserFlagToggle } from "./user-flag-toggle";
 import { UserFeatureFlagToggle } from "./feature-flag-toggle";
 import { ImpersonateUserButton } from "./impersonate-user-button";
-import { BanUserAction } from "./ban-user-action";
-import { ShadowBanUserToggle } from "./shadow-ban-user-toggle";
 import { DeleteUserAction } from "./delete-user-action";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCallback, useState, useTransition } from "react";
@@ -61,7 +59,6 @@ const userKeys: (keyof User)[] = [
   "updatedAt",
   "emailVerified",
   "image",
-  "stripeCustomerId",
 ];
 
 const userFlagSkipKeys: (keyof UserFlags)[] = [
@@ -499,22 +496,6 @@ export function AdminUserContent({
                     >
                       Reset
                     </Button>
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="whitespace-pre-wrap">
-                    Ban or unban this user from accessing the application.
-                  </TableCell>
-                  <TableCell>
-                    <BanUserAction user={user} />
-                  </TableCell>
-                </TableRow>
-                <TableRow>
-                  <TableCell className="whitespace-pre-wrap">
-                    Shadow ban this user (3 tasks/hour limit).
-                  </TableCell>
-                  <TableCell>
-                    <ShadowBanUserToggle user={user} />
                   </TableCell>
                 </TableRow>
                 <TableRow>

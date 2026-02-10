@@ -1,18 +1,36 @@
-import { getBillingInfoAction } from "@/server-actions/billing";
-import { useQuery } from "@tanstack/react-query";
-import { getServerActionQueryOptions } from "./server-action-helpers";
+// Billing queries stub for self-hosted mode.
+// Billing system is not used in self-hosted deployments.
 
-const BILLING_INFO_QUERY_KEY = ["billing-info"] as const;
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
+export type BillingInfo = {
+  tier: "pro";
+  hasActiveSubscription: boolean;
+  subscription: null;
+  signupTrial: null;
+};
+
+/**
+ * Stub query options for billing info.
+ * Always returns pro tier in self-hosted mode.
+ */
 export function billingInfoQueryOptions() {
-  return getServerActionQueryOptions({
-    queryKey: BILLING_INFO_QUERY_KEY,
-    queryFn: getBillingInfoAction,
-    // Keep fresh briefly; UI already exposes manual refresh
-    staleTime: 60_000,
+  return queryOptions({
+    queryKey: ["billingInfo"],
+    queryFn: async (): Promise<BillingInfo> => ({
+      tier: "pro",
+      hasActiveSubscription: true,
+      subscription: null,
+      signupTrial: null,
+    }),
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
+/**
+ * Stub hook for billing info query.
+ * Always returns pro tier in self-hosted mode.
+ */
 export function useBillingInfoQuery() {
   return useQuery(billingInfoQueryOptions());
 }

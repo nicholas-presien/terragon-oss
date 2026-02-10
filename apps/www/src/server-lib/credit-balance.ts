@@ -1,11 +1,18 @@
-// Credit balance has been removed for self-hosted deployment.
-// Returns a large balance stub so credit checks never block usage.
+// Credit balance stub for self-hosted mode.
+// Credit system is not used in self-hosted deployments.
 
-export const creditsTagFor = (userId: string) => `credits:user:${userId}`;
-
-export async function getCachedUserCreditBalance(
-  _userId: string,
-): Promise<{ balanceCents: number }> {
-  // Self-hosted mode: unlimited credits
-  return { balanceCents: 999_999_99 };
+/**
+ * Stub for getting user credit balance.
+ * Always returns zero balance in self-hosted mode.
+ */
+export async function getCachedUserCreditBalance(userId: string): Promise<{
+  totalCreditsCents: number;
+  totalUsageCents: number;
+  balanceCents: number;
+}> {
+  return {
+    totalCreditsCents: 0,
+    totalUsageCents: 0,
+    balanceCents: 0,
+  };
 }

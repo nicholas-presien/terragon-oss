@@ -1,126 +1,40 @@
-import { LoopsClient, TransactionalVariables } from "loops";
-import { env } from "@terragon/env/apps-www";
-import { db } from "./db";
-import { user } from "@terragon/shared/db/schema";
-import { eq } from "drizzle-orm";
+// Loops email stub for self-hosted mode.
+// Email marketing functionality is not available in self-hosted deployments.
 
 /**
- * Send an event to Loops for a user (best-effort)
- * @param userId - The user ID
- * @param eventName - The event name
- * @param eventProperties - Additional event properties
+ * Stub for sending Loops events.
+ * No-op in self-hosted mode.
  */
 export async function sendLoopsEvent(
-  userId: string,
+  email: string,
   eventName: string,
-  eventProperties?: Record<string, unknown>,
-) {
-  try {
-    // Skip if Loops API key is not configured
-    if (!env.LOOPS_API_KEY) {
-      return;
-    }
-
-    // Fetch user email from database
-    const userRecord = await db.query.user.findFirst({
-      where: eq(user.id, userId),
-      columns: {
-        email: true,
-      },
-    });
-
-    if (!userRecord?.email) {
-      return;
-    }
-
-    // Initialize Loops client and send event
-    const loops = new LoopsClient(env.LOOPS_API_KEY);
-    await loops.sendEvent({
-      email: userRecord.email,
-      eventName,
-      eventProperties: {
-        userId,
-        ...eventProperties,
-      },
-    });
-  } catch (err) {
-    // Log error but don't throw - this is a best-effort operation
-    console.warn(`Loops sendEvent failed for event ${eventName}:`, err);
-  }
+  eventProperties?: Record<string, any>,
+): Promise<void> {
+  // No-op for self-hosted
+  return;
 }
 
 /**
- * Send a transactional email via Loops (best-effort)
- * @param params - Email parameters
+ * Stub for updating Loops contact.
+ * No-op in self-hosted mode.
+ */
+export async function updateLoopsContact(
+  email: string,
+  properties: Record<string, any>,
+): Promise<void> {
+  // No-op for self-hosted
+  return;
+}
+
+/**
+ * Stub for sending transactional emails via Loops.
+ * No-op in self-hosted mode.
  */
 export async function sendLoopsTransactionalEmail(params: {
   email: string;
   transactionalId: string;
-  dataVariables?: TransactionalVariables;
-  addToAudience?: boolean;
-}) {
-  try {
-    // Skip if Loops API key is not configured
-    if (!env.LOOPS_API_KEY) {
-      console.log("Loops API key not configured, skipping transactional email");
-      return;
-    }
-
-    // Initialize Loops client and send transactional email
-    const loops = new LoopsClient(env.LOOPS_API_KEY);
-    await loops.sendTransactionalEmail({
-      email: params.email,
-      transactionalId: params.transactionalId,
-      dataVariables: params.dataVariables,
-      addToAudience: params.addToAudience ?? false,
-    });
-  } catch (err) {
-    // Log error but don't throw - this is a best-effort operation
-    console.warn(
-      `Loops sendTransactionalEmail failed for template ${params.transactionalId}:`,
-      err,
-    );
-  }
-}
-
-/**
- * Update contact properties in Loops (best-effort)
- * @param userId - The user ID
- * @param properties - Contact properties to update
- */
-export async function updateLoopsContact(
-  userId: string,
-  properties: Record<string, unknown>,
-) {
-  try {
-    // Skip if Loops API key is not configured
-    if (!env.LOOPS_API_KEY) {
-      return;
-    }
-
-    // Fetch user email from database
-    const userRecord = await db.query.user.findFirst({
-      where: eq(user.id, userId),
-      columns: {
-        email: true,
-      },
-    });
-
-    if (!userRecord?.email) {
-      return;
-    }
-
-    // Initialize Loops client and update contact
-    const loops = new LoopsClient(env.LOOPS_API_KEY);
-    await loops.updateContact({
-      email: userRecord.email,
-      properties: {
-        ...properties,
-        userId, // Always include userId
-      },
-    });
-  } catch (err) {
-    // Log error but don't throw - this is a best-effort operation
-    console.warn("Loops updateContact failed:", err);
-  }
+  dataVariables?: Record<string, any>;
+}): Promise<void> {
+  // No-op for self-hosted
+  return;
 }

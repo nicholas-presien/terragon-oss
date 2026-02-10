@@ -46,8 +46,6 @@ async function seed() {
       createdAt: new Date("2024-01-01"),
       updatedAt: new Date("2024-01-01"),
       role: "admin",
-      banned: false,
-      shadowBanned: false,
     })
     .onConflictDoNothing();
 

@@ -22,7 +22,6 @@ export async function getUserListForAdminPage<T extends User = User>(
       .select({
         userId: schema.user.id,
         onboardingCompleted: schema.userFlags.hasSeenOnboarding,
-        subscription: schema.subscription,
       })
       .from(schema.user)
       .where(
@@ -31,11 +30,7 @@ export async function getUserListForAdminPage<T extends User = User>(
           users.map((user) => user.id),
         ),
       )
-      .leftJoin(schema.userFlags, eq(schema.user.id, schema.userFlags.userId))
-      .leftJoin(
-        schema.subscription,
-        eq(schema.user.id, schema.subscription.referenceId),
-      ),
+      .leftJoin(schema.userFlags, eq(schema.user.id, schema.userFlags.userId)),
     db
       .select({
         userId: schema.thread.userId,
@@ -71,21 +66,10 @@ export async function getUserListForAdminPage<T extends User = User>(
     const info = userInfoMap[user.id]!;
     const infoAgg = userInfoAggMap[user.id];
 
-    let accessTierInfo: string | null = null;
+    // Self-hosted mode - no subscription system
+    const accessTierInfo = "Self-Hosted";
     const signupTrial = getSignupTrialInfo(user);
-    const subscription = info.subscription;
-    if (subscription) {
-      const isActive =
-        (subscription.status === "active" ||
-          subscription.status === "past_due") &&
-        subscription.periodEnd &&
-        subscription.periodEnd >= new Date();
-      accessTierInfo = isActive
-        ? subscription.plan
-        : `${subscription.plan} (${subscription.status})`;
-    } else if (signupTrial?.isActive) {
-      accessTierInfo = `${signupTrial.plan} (trial)`;
-    }
+
     return {
       ...user,
       mostRecentThreadDate: infoAgg?.mostRecentThreadDate ?? null,

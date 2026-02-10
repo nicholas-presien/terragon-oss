@@ -1,22 +1,24 @@
-import { getUserCreditBalanceAction } from "@/server-actions/user-credit-balance";
-import { useQuery } from "@tanstack/react-query";
-import { getServerActionQueryOptions } from "./server-action-helpers";
+// Credit balance queries stub for self-hosted mode.
+// Credit system is not used in self-hosted deployments.
 
-export const USER_CREDIT_BALANCE_QUERY_KEY = [
-  "user",
-  "credit-balance",
-] as const;
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
-export function userCreditBalanceQueryOptions() {
-  return getServerActionQueryOptions({
-    queryKey: USER_CREDIT_BALANCE_QUERY_KEY,
-    queryFn: getUserCreditBalanceAction,
+/**
+ * Stub query options for user credit balance.
+ * Always returns 0 in self-hosted mode.
+ */
+export function userCreditBalanceQueryOptions(userId: string) {
+  return queryOptions({
+    queryKey: ["userCreditBalance", userId],
+    queryFn: async () => 0,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 }
 
-export function useUserCreditBalanceQuery(options?: { enabled?: boolean }) {
-  return useQuery({
-    ...userCreditBalanceQueryOptions(),
-    enabled: options?.enabled,
-  });
+/**
+ * Stub hook for user credit balance query.
+ * Always returns 0 in self-hosted mode.
+ */
+export function useUserCreditBalanceQuery(userId: string) {
+  return useQuery(userCreditBalanceQueryOptions(userId));
 }

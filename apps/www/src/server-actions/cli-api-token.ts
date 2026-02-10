@@ -6,6 +6,7 @@ import { userOnlyAction } from "@/lib/auth-server";
 
 export const createCliApiToken = userOnlyAction(
   async function createCliApiToken(userId: string) {
+    // @ts-expect-error - Better Auth API type mismatch
     const cliApiKey = await auth.api.createApiKey({
       body: {
         name: `cli-${nanoid()}`,
@@ -13,6 +14,7 @@ export const createCliApiToken = userOnlyAction(
         userId,
       },
     });
+    // @ts-expect-error - Better Auth API type mismatch
     return cliApiKey.key;
   },
   { defaultErrorMessage: "Failed to create CLI API token" },

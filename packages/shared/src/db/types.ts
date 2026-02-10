@@ -7,10 +7,7 @@ type UserInner = typeof schema.user.$inferSelect;
 // In better-auth, some of the fields becoming optional, so we need to make them optional here
 // to make typescript happy.
 type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
-export type User = WithOptional<
-  UserInner,
-  "image" | "role" | "banned" | "banReason" | "banExpires" | "shadowBanned"
->;
+export type User = WithOptional<UserInner, "image" | "role">;
 
 // Session type removed - no longer using session-based auth in self-hosted mode
 export type Session = {
@@ -69,8 +66,7 @@ export type UserFlagsInsert = typeof schema.userFlags.$inferInsert;
 export type UserInfoServerSide = typeof schema.userInfoServerSide.$inferSelect;
 export type UserInfoServerSideInsert =
   typeof schema.userInfoServerSide.$inferInsert;
-export type Feedback = typeof schema.feedback.$inferSelect;
-export type FeedbackInsert = typeof schema.feedback.$inferInsert;
+// Feedback removed - not needed in self-hosted mode
 export type FeedbackType = "bug" | "feature" | "feedback";
 
 export type SlackAccountWithMetadata = SlackAccount & {
