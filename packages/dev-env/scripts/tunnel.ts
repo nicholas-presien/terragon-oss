@@ -137,6 +137,35 @@ async function restartTunnel() {
 }
 
 async function main() {
+  // Check if tunnel is configured
+  if (
+    !env.CUSTOM_TUNNEL_COMMAND &&
+    (!env.NGROK_DOMAIN || !env.NGROK_AUTH_TOKEN)
+  ) {
+    console.warn("⚠️  No tunnel configured (ngrok or custom tunnel)");
+    console.warn(
+      "⚠️  Remote sandboxes will not be able to communicate with your local server",
+    );
+    console.warn(
+      "⚠️  To enable sandboxes, configure NGROK_DOMAIN and NGROK_AUTH_TOKEN in .env.development.local",
+    );
+    console.warn(
+      "⚠️  Or set CUSTOM_TUNNEL_COMMAND for an alternative tunnel solution",
+    );
+    console.log("✓ Continuing without tunnel...");
+
+    // Keep the process alive but don't create a tunnel
+    const cleanup = () => {
+      console.log("\n👋 Tunnel service shutting down");
+      process.exit(0);
+    };
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+    process.on("SIGHUP", cleanup);
+    process.stdin.resume();
+    return;
+  }
+
   try {
     if (env.CUSTOM_TUNNEL_COMMAND) {
       customTunnelProcess = await startCustomTunnel();

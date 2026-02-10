@@ -9,7 +9,6 @@ This devcontainer provides a complete development setup for the Terragon monorep
 - PostgreSQL 16
 - Redis 7
 - Docker CLI (docker-outside-of-docker)
-- Stripe CLI
 - ngrok (tunnel service)
 - cloudflared (alternative tunnel)
 - GitHub CLI (gh)

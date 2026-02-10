@@ -51,7 +51,7 @@
     }
   },
 
-  "forwardPorts": [3000, 3001, 1999, 5432, 6379, 8079, 4040, 12111, 9229],
+  "forwardPorts": [3000, 3001, 1999, 5432, 6379, 8079, 4040, 9229],
 
   "portsAttributes": {
     "3000": {
@@ -81,10 +81,6 @@
     "4040": {
       "label": "ngrok Inspector",
       "onAutoForward": "openBrowserOnce"
-    },
-    "12111": {
-      "label": "Stripe Webhook Listener",
-      "onAutoForward": "silent"
     },
     "9229": {
       "label": "Node.js Debugger",
