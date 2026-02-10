@@ -1,7 +1,8 @@
+/**
+ * Access codes module - DISABLED in self-hosted mode.
+ * All functions are stubs that throw errors or return empty results.
+ */
 import { DB } from "../db";
-import { accessCodes } from "../db/schema";
-import { eq, and, isNull } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
 export async function generateAccessCode({
   db,
@@ -14,19 +15,7 @@ export async function generateAccessCode({
     email?: string;
   };
 }) {
-  const code = `ac_${nanoid(20)}`;
-
-  const [accessCode] = await db
-    .insert(accessCodes)
-    .values({
-      code,
-      email: options?.email,
-      createdByUserId,
-      expiresAt: null,
-    })
-    .returning();
-
-  return accessCode;
+  throw new Error("Access codes are not available in self-hosted mode");
 }
 
 export async function validateAccessCode({
@@ -36,13 +25,7 @@ export async function validateAccessCode({
   db: DB;
   code: string;
 }) {
-  const [accessCode] = await db
-    .select()
-    .from(accessCodes)
-    .where(and(eq(accessCodes.code, code), isNull(accessCodes.usedAt)))
-    .limit(1);
-
-  return accessCode;
+  return undefined;
 }
 
 export async function markAccessCodeAsUsed({
@@ -54,16 +37,7 @@ export async function markAccessCodeAsUsed({
   code: string;
   email: string;
 }) {
-  const [updated] = await db
-    .update(accessCodes)
-    .set({
-      usedByEmail: email,
-      usedAt: new Date(),
-    })
-    .where(eq(accessCodes.code, code))
-    .returning();
-
-  return updated;
+  return undefined;
 }
 
 export async function getAccessCodesByCreator({
@@ -73,13 +47,9 @@ export async function getAccessCodesByCreator({
   db: DB;
   createdByUserId: string;
 }) {
-  return db
-    .select()
-    .from(accessCodes)
-    .where(eq(accessCodes.createdByUserId, createdByUserId))
-    .orderBy(accessCodes.createdAt);
+  return [];
 }
 
 export async function deleteAccessCode({ db, id }: { db: DB; id: string }) {
-  await db.delete(accessCodes).where(eq(accessCodes.id, id));
+  // No-op
 }

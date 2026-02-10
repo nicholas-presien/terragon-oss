@@ -1,7 +1,5 @@
 import { redis } from "./redis";
 import { Ratelimit } from "@upstash/ratelimit";
-import { db } from "@/lib/db";
-import { getUser } from "@terragon/shared/model/user";
 const PREFIX = "@upstash/ratelimit";
 
 const productionRefillRate = 20;
@@ -39,46 +37,6 @@ export async function trackSandboxCreation(userId: string) {
   }
 }
 
-// Waitlist submission rate limiting (by IP address)
-export const waitlistSubmissionRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(
-    5, // 5 requests
-    "15m", // per 15 minutes
-  ),
-  prefix: `${PREFIX}:waitlist-submission`,
-});
-
-// Onboarding questionnaire update rate limiting (by IP address)
-export const onboardingUpdateRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(
-    20, // 20 requests (allow multiple form steps)
-    "5m", // per 5 minutes
-  ),
-  prefix: `${PREFIX}:onboarding-update`,
-});
-
-export async function checkWaitlistRateLimit(ip: string) {
-  const result = await waitlistSubmissionRateLimit.limit(ip);
-  if (!result.success) {
-    throw new Error(
-      `Too many waitlist submissions. Try again in ${Math.ceil(result.reset / 1000 / 60)} minutes.`,
-    );
-  }
-  return result;
-}
-
-export async function checkOnboardingRateLimit(ip: string) {
-  const result = await onboardingUpdateRateLimit.limit(ip);
-  if (!result.success) {
-    throw new Error(
-      `Too many form updates. Try again in ${Math.ceil(result.reset / 1000 / 60)} minutes.`,
-    );
-  }
-  return result;
-}
-
 // CLI task creation rate limiting (by user ID)
 export const cliTaskCreationRateLimit = new Ratelimit({
   redis,
@@ -97,30 +55,6 @@ export async function checkCliTaskCreationRateLimit(userId: string) {
     );
     throw new Error(
       `Daily task creation limit reached (50 tasks per day). Try again in ${hoursUntilReset} hours.`,
-    );
-  }
-  return result;
-}
-
-// Shadow-banned users: 3 tasks per hour (applies across sources)
-export const shadowBanTaskCreationRateLimit = new Ratelimit({
-  redis,
-  limiter: Ratelimit.slidingWindow(3, "1h"),
-  prefix: `${PREFIX}:shadowban-task-creation`,
-});
-
-// No-op for non-shadow-banned users; used by web and internal paths
-export async function checkShadowBanTaskCreationRateLimit(userId: string) {
-  const user = await getUser({ db, userId });
-  if (!user?.shadowBanned) return { success: true } as const;
-  const result = await shadowBanTaskCreationRateLimit.limit(userId);
-  if (!result.success) {
-    const minutesUntilReset = Math.ceil(
-      (result.reset - Date.now()) / 1000 / 60,
-    );
-    // Generic message (do not expose shadow ban state)
-    throw new Error(
-      `Task creation limit reached. Try again in ${minutesUntilReset} minutes.`,
     );
   }
   return result;

@@ -3,30 +3,27 @@ import { AutomationTrigger, AutomationTriggerType } from "../automations";
 import * as schema from "../db/schema";
 
 type UserInner = typeof schema.user.$inferSelect;
-type SessionInner = typeof schema.session.$inferSelect;
 
 // In better-auth, some of the fields becoming optional, so we need to make them optional here
 // to make typescript happy.
 type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type User = WithOptional<
   UserInner,
-  | "image"
-  | "role"
-  | "banned"
-  | "banReason"
-  | "banExpires"
-  | "shadowBanned"
-  | "stripeCustomerId"
+  "image" | "role" | "banned" | "banReason" | "banExpires" | "shadowBanned"
 >;
-export type Session = WithOptional<
-  SessionInner,
-  "ipAddress" | "userAgent" | "impersonatedBy"
->;
-export type UserStripePromotionCode =
-  typeof schema.userStripePromotionCode.$inferSelect;
-export type UserStripePromotionCodeInsert =
-  typeof schema.userStripePromotionCode.$inferInsert;
 
+// Session type removed - no longer using session-based auth in self-hosted mode
+export type Session = {
+  id: string;
+  expiresAt: Date;
+  token: string;
+  createdAt: Date;
+  updatedAt: Date;
+  ipAddress: string | null;
+  userAgent: string | null;
+  userId: string;
+  impersonatedBy: string | null;
+};
 export type ThreadVisibility = "private" | "link" | "repo";
 
 export type ClaudeOrganizationType =
@@ -47,7 +44,12 @@ export type Thread = typeof schema.thread.$inferSelect;
 export type ThreadChat = typeof schema.threadChat.$inferSelect;
 export type UserSettings = typeof schema.userSettings.$inferSelect;
 export type Environment = typeof schema.environment.$inferSelect;
-export type Waitlist = typeof schema.waitlist.$inferSelect;
+// Waitlist removed - not needed in self-hosted mode
+export type Waitlist = {
+  id: string;
+  email: string;
+  createdAt: Date;
+};
 export type AgentProviderCredentials =
   typeof schema.agentProviderCredentials.$inferSelect;
 export type AgentProviderCredentialsInsert =
@@ -237,27 +239,29 @@ export type ThreadInfoFull = Omit<ThreadInfo, "threadChats"> & {
   childThreads: ChildThreadInfo[];
 };
 
-export type AllowedSignup = typeof schema.allowedSignups.$inferSelect;
+// AllowedSignups removed - not needed in self-hosted mode
+export type AllowedSignup = {
+  id: string;
+  email: string;
+  createdAt: Date;
+  expiredAt: Date | null;
+};
 export type AllowedSignupWithUserId = AllowedSignup & {
   userIdOrNull: string | null;
 };
 
-export type SubscriptionRaw = typeof schema.subscription.$inferSelect;
-export type SubscriptionInfo = Pick<
-  SubscriptionRaw,
-  | "id"
-  | "plan"
-  | "status"
-  | "periodEnd"
-  | "periodStart"
-  | "trialStart"
-  | "trialEnd"
-  | "cancelAtPeriodEnd"
-> & {
+// Subscription types kept as standalone stubs (schema table removed for self-hosted).
+export type SubscriptionInfo = {
+  id: string;
+  plan: string;
+  status: string;
+  periodEnd: Date | null;
+  periodStart: Date | null;
+  trialStart: Date | null;
+  trialEnd: Date | null;
+  cancelAtPeriodEnd: boolean | null;
   isActive: boolean;
 };
-
-export type SubscriptionInsert = typeof schema.subscription.$inferInsert;
 
 export type ThreadInsertRaw = typeof schema.thread.$inferInsert;
 export type ThreadChatInsertRaw = typeof schema.threadChat.$inferInsert;
@@ -330,12 +334,6 @@ export type AutomationInsert<T = AutomationTriggerType> = Omit<
   triggerConfig: Extract<AutomationTrigger, { type: T }>["config"];
 };
 
-export type UserCreditGrantType =
-  | "signup_bonus"
-  | "stripe_top_up"
-  | "stripe_auto_reload"
-  | "admin_adjustment";
-
 export type UsageEventType =
   | "claude_cost_usd"
   | "billable_anthropic_usd"
@@ -365,12 +363,6 @@ export type UsageSku =
   | "google_gemini_3_pro"
   | "google_default";
 
-export type UsageEvent = typeof schema.usageEvents.$inferSelect;
-export type UsageEventInsert = typeof schema.usageEvents.$inferInsert;
-
-export type UserCredit = typeof schema.userCredits.$inferSelect;
-export type UserCreditInsert = typeof schema.userCredits.$inferInsert;
-
 export type UserCredentials = {
   hasClaude: boolean;
   hasAmp: boolean;
@@ -390,12 +382,6 @@ export type AccessTier = "none" | "core" | "pro";
 
 export type AccessInfo = {
   tier: AccessTier;
-};
-
-export type StripePromotionCode = {
-  code: string;
-  stripeCouponId: string;
-  stripePromotionCodeId: string;
 };
 
 export type BillingInfo = {

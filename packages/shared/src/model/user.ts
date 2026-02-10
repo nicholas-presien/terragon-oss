@@ -1,9 +1,8 @@
-import { eq, and, sql, desc } from "drizzle-orm";
+import { eq, sql, desc } from "drizzle-orm";
 import { DB } from "../db";
 import * as schema from "../db/schema";
 import { publishBroadcastUserMessage } from "../broadcast-server";
 import { UserInfoServerSide, UserSettings } from "../db/types";
-import { decryptTokenWithBackwardsCompatibility } from "@terragon/utils/encryption";
 
 export async function getGitHubUserAccessTokenOrThrow({
   db,
@@ -14,29 +13,10 @@ export async function getGitHubUserAccessTokenOrThrow({
   userId: string;
   encryptionKey: string;
 }) {
-  const githubAccounts = await db
-    .select()
-    .from(schema.account)
-    .where(
-      and(
-        eq(schema.account.userId, userId),
-        eq(schema.account.providerId, "github"),
-      ),
-    )
-    .execute();
-  if (githubAccounts.length === 0) {
-    throw new Error("No GitHub account found");
-  }
-  const githubAccount = githubAccounts[0]!;
-
-  if (!githubAccount.accessToken) {
-    throw new Error("No GitHub access token found");
-  }
-
-  // Decrypt the token if it's encrypted, otherwise return as-is (backwards compatibility)
-  return decryptTokenWithBackwardsCompatibility(
-    githubAccount.accessToken,
-    encryptionKey,
+  // Note: GitHub OAuth is not available in self-hosted mode
+  // GitHub App authentication should be used instead via installation tokens
+  throw new Error(
+    "GitHub OAuth is not available in self-hosted mode. Use GitHub App authentication instead.",
   );
 }
 
@@ -186,16 +166,9 @@ export async function getUserIdByGitHubAccountId({
   db: DB;
   accountId: string;
 }) {
-  const account = await db.query.account.findFirst({
-    where: and(
-      eq(schema.account.accountId, accountId),
-      eq(schema.account.providerId, "github"),
-    ),
-    columns: {
-      userId: true,
-    },
-  });
-  return account?.userId;
+  // Note: GitHub OAuth account linking is not available in self-hosted mode
+  // Return null as there are no linked accounts
+  return null;
 }
 
 export async function getGitHubAccountIdForUser({
@@ -205,16 +178,9 @@ export async function getGitHubAccountIdForUser({
   db: DB;
   userId: string;
 }) {
-  const account = await db.query.account.findFirst({
-    where: and(
-      eq(schema.account.userId, userId),
-      eq(schema.account.providerId, "github"),
-    ),
-    columns: {
-      accountId: true,
-    },
-  });
-  return account?.accountId;
+  // Note: GitHub OAuth account linking is not available in self-hosted mode
+  // Return null as there are no linked accounts
+  return null;
 }
 
 export async function getRecentUsersForAdmin({
@@ -256,12 +222,11 @@ export async function updateUser({
 }: {
   db: DB;
   userId: string;
-  updates: Partial<
-    Pick<
-      typeof schema.user.$inferSelect,
-      "stripeCustomerId" | "signupTrialPlan"
-    >
-  >;
+  updates: Partial<typeof schema.user.$inferSelect>;
 }) {
+  // Prevent updating critical fields
+  if ("id" in updates || "email" in updates || "createdAt" in updates) {
+    throw new Error("Cannot update id, email, or createdAt fields");
+  }
   await db.update(schema.user).set(updates).where(eq(schema.user.id, userId));
 }

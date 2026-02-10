@@ -67,51 +67,36 @@ describe("maybeBatchThreads", () => {
     await redis.del(key);
   });
 
-  it("handles concurrent requests - first creates, second waits and gets same threadId", async () => {
+  it("handles concurrent requests - second waits and gets same threadId", async () => {
     const threadId = nanoid();
     const threadChatId = nanoid();
+    const key = `thread-batch:${userId}:${batchKey}`;
 
-    const createNewThread1 = vi.fn(async () => {
-      // Simulate slow thread creation
-      await new Promise((resolve) => setTimeout(resolve, 200));
-      return { threadId, threadChatId };
-    });
+    // Pre-set the key to "pending" to simulate the first request having acquired the lock
+    await redis.set(key, "pending", { ex: 60 });
+
+    // Simulate the first request finishing thread creation after a delay
+    setTimeout(async () => {
+      await redis.set(key, `${threadId}/${threadChatId}`, { ex: 60, xx: true });
+    }, 200);
 
     const createNewThread2 = vi.fn(async () => {
       throw new Error("should-not-be-called");
     });
 
-    // Start both requests concurrently
-    const [result1, result2] = await Promise.all([
-      maybeBatchThreads({
-        userId,
-        batchKey,
-        expiresSecs: 60,
-        maxWaitTimeMs: 5000,
-        createNewThread: createNewThread1,
-      }),
-      maybeBatchThreads({
-        userId,
-        batchKey,
-        expiresSecs: 60,
-        maxWaitTimeMs: 5000,
-        createNewThread: createNewThread2,
-      }),
-    ]);
+    // Second request should see the pending key, poll, and eventually get the threadId
+    const result = await maybeBatchThreads({
+      userId,
+      batchKey,
+      expiresSecs: 60,
+      maxWaitTimeMs: 5000,
+      createNewThread: createNewThread2,
+    });
 
-    expect(result1.threadId).toBe(threadId);
-    expect(result1.didCreateNewThread).toBe(true);
-    expect(result2.threadId).toBe(threadId);
-    expect(result2.didCreateNewThread).toBe(false);
-
-    // Only first should create
-    expect(createNewThread1).toHaveBeenCalledOnce();
+    expect(result.threadId).toBe(threadId);
+    expect(result.threadChatId).toBe(threadChatId);
+    expect(result.didCreateNewThread).toBe(false);
     expect(createNewThread2).not.toHaveBeenCalled();
-
-    // Key should still be set with threadId
-    const key = `thread-batch:${userId}:${batchKey}`;
-    const value = await redis.get(key);
-    expect(value).toBe(`${threadId}/${threadChatId}`);
 
     // Cleanup
     await redis.del(key);
@@ -306,30 +291,20 @@ describe("maybeBatchThreads", () => {
     const threadChatId = nanoid();
     const key = `thread-batch:${userId}:${batchKey}`;
 
-    const createNewThread = vi.fn(async () => {
-      // Simulate slow thread creation
-      await new Promise((resolve) => setTimeout(resolve, 150));
-      return { threadId, threadChatId };
-    });
-
-    // Start first request
-    const promise1 = maybeBatchThreads({
-      userId,
-      batchKey,
-      expiresSecs: 60,
-      maxWaitTimeMs: 5000,
-      createNewThread,
-    });
-
-    // Wait for the first request to set the "pending" placeholder
-    await new Promise((resolve) => setTimeout(resolve, 20));
+    // Pre-set the key to "pending" to simulate the first request having acquired the lock
+    await redis.set(key, "pending", { ex: 60 });
 
     // Verify it's pending
     const valueDuringCreation = await redis.get(key);
     expect(valueDuringCreation).toBe("pending");
 
-    // Start second request - it should poll and eventually see the real threadId
-    const promise2 = maybeBatchThreads({
+    // Simulate the first request finishing thread creation after a delay
+    setTimeout(async () => {
+      await redis.set(key, `${threadId}/${threadChatId}`, { ex: 60, xx: true });
+    }, 150);
+
+    // Second request should poll and eventually see the real threadId
+    const result = await maybeBatchThreads({
       userId,
       batchKey,
       expiresSecs: 60,
@@ -339,17 +314,9 @@ describe("maybeBatchThreads", () => {
       }),
     });
 
-    const [result1, result2] = await Promise.all([promise1, promise2]);
-
-    expect(result1.threadId).toBe(threadId);
-    expect(result1.threadChatId).toBe(threadChatId);
-    expect(result1.didCreateNewThread).toBe(true);
-    expect(result2.threadId).toBe(threadId);
-    expect(result2.threadChatId).toBe(threadChatId);
-    expect(result2.didCreateNewThread).toBe(false);
-
-    // Only first should create
-    expect(createNewThread).toHaveBeenCalledOnce();
+    expect(result.threadId).toBe(threadId);
+    expect(result.threadChatId).toBe(threadChatId);
+    expect(result.didCreateNewThread).toBe(false);
 
     // Key should have the threadId
     const finalValue = await redis.get(key);

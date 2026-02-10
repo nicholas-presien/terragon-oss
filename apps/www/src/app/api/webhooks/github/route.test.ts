@@ -74,8 +74,8 @@ describe("GitHub webhook route", () => {
   let githubAccountId: number;
 
   beforeAll(async () => {
-    const testUserResult = await createTestUser({ db });
-    githubAccountId = parseInt(testUserResult.githubAccount.id);
+    await createTestUser({ db });
+    githubAccountId = 123;
   });
 
   beforeEach(async () => {

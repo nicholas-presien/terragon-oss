@@ -17,6 +17,11 @@ export default defineConfig({
   test: {
     silent: "passed-only",
     env: {
+      NODE_ENV: "test",
+      DATABASE_URL:
+        "postgresql://postgres:postgres@terragon_postgres_test:5432/postgres",
+      REDIS_URL: "http://terragon_redis_http_test:80",
+      REDIS_TOKEN: "redis_test_token",
       GITHUB_CLIENT_ID: "GITHUB_CLIENT_ID_TEST",
       GITHUB_CLIENT_SECRET: "GITHUB_CLIENT_SECRET_TEST",
       ANTHROPIC_API_KEY: "ANTHROPIC_API_KEY_TEST",

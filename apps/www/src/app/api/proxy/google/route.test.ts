@@ -2,28 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { NextRequest } from "next/server";
 import * as googleAIStudioRoute from "./[[...path]]/route";
 import { logGoogleUsage } from "./log-google-usage";
-import { auth } from "@/lib/auth";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      verifyApiKey: vi.fn(),
-    },
-  },
-}));
-
-vi.mock("@terragon/shared/model/credits", () => ({
-  getUserCreditBalance: vi.fn(),
-}));
-
-vi.mock("@/server-lib/credit-auto-reload", () => ({
-  maybeTriggerCreditAutoReload: vi.fn(),
-}));
 
 vi.mock("@terragon/env/apps-www", () => ({
   env: {
     GOOGLE_AI_STUDIO_API_KEY: "test-google-ai-studio-key",
+    INTERNAL_SHARED_SECRET: "test-daemon-token",
   },
 }));
 
@@ -70,24 +53,12 @@ function createRequest({
 }
 
 describe("Google AI Studio proxy route", () => {
-  const verifyApiKeyMock = vi.mocked(auth.api.verifyApiKey);
-  const getUserCreditBalanceMock = vi.mocked(getUserCreditBalance);
   const logUsageMock = vi.mocked(logGoogleUsage);
   const { POST } = googleAIStudioRoute;
 
   beforeEach(async () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
-    verifyApiKeyMock.mockResolvedValue({
-      valid: true,
-      error: null,
-      key: { userId: "user-123" } as any,
-    });
-    getUserCreditBalanceMock.mockResolvedValue({
-      totalCreditsCents: 1_000,
-      totalUsageCents: 0,
-      balanceCents: 1_000,
-    });
     logUsageMock.mockReset();
     logUsageMock.mockImplementation(async () => {});
   });
@@ -153,12 +124,12 @@ describe("Google AI Studio proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: fetchUrl.pathname,
       usage: responsePayload.usageMetadata,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: "gemini-2.5-pro",
     });
   });
 
-  it("authorizes requests using the Authorization header token", async () => {
+  it("authorizes requests using the Authorization Bearer header", async () => {
     const fetchResponse = new Response(
       JSON.stringify({
         candidates: [],
@@ -181,7 +152,7 @@ describe("Google AI Studio proxy route", () => {
     const request = createRequest({
       includeDefaultToken: false,
       headers: {
-        Authorization: "Bearer another-daemon-token",
+        Authorization: "Bearer test-daemon-token",
       },
       body: {
         model: "gemini-2.5-pro",
@@ -190,37 +161,38 @@ describe("Google AI Studio proxy route", () => {
       url: "https://example.com/api/proxy/google/v1/models/gemini-2.5-pro:generateContent",
     });
 
-    await POST(request, {
+    const response = await POST(request, {
       params: Promise.resolve({
         path: ["v1", "models", "gemini-2.5-pro:generateContent"],
       }),
     });
 
-    expect(verifyApiKeyMock).toHaveBeenCalledWith({
-      body: { key: "another-daemon-token" },
-    });
-
+    expect(response.status).toBe(200);
     const fetchUrl = fetchMock.mock.calls[0]![0] as URL;
     expect(fetchUrl.searchParams.get("key")).toBe("test-google-ai-studio-key");
   });
 
-  it("rejects requests when user has no remaining credits", async () => {
-    getUserCreditBalanceMock.mockResolvedValueOnce({
-      totalCreditsCents: 0,
-      totalUsageCents: 0,
-      balanceCents: 0,
-    });
-
+  it("rejects requests with invalid daemon token", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const request = createRequest();
+    const request = createRequest({
+      includeDefaultToken: false,
+      headers: {
+        Authorization: "Bearer wrong-token",
+      },
+      body: {
+        model: "gemini-2.5-pro",
+        contents: [],
+      },
+      url: "https://example.com/api/proxy/google/v1/models/gemini-2.5-pro:generateContent",
+    });
+
     const response = await POST(request, {
       params: Promise.resolve({}),
     });
 
-    expect(response.status).toBe(402);
-    expect(await response.text()).toBe("Insufficient credits");
+    expect(response.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -296,7 +268,7 @@ describe("Google AI Studio proxy route", () => {
           candidatesTokenCount: 5,
           totalTokenCount: 15,
         },
-        userId: "user-123",
+        userId: "self-hosted-default-user",
         model: "gemini-2.5-pro",
       }),
     );

@@ -19,6 +19,23 @@ export async function setupTestContainers(): Promise<SetupResult> {
     stdio: "inherit",
   });
 
+  // Connect test containers to the devcontainer network so they're reachable
+  // via container hostname (needed for Docker-in-Docker / devcontainer setups)
+  for (const container of [
+    "terragon_postgres_test",
+    "terragon_redis_test",
+    "terragon_redis_http_test",
+  ]) {
+    try {
+      execSync(
+        `docker network connect dev-env_default ${container} 2>/dev/null`,
+        { stdio: "ignore" },
+      );
+    } catch {
+      // Already connected, ignore
+    }
+  }
+
   // Clear existing data for clean test state
   try {
     // Clear PostgreSQL database
@@ -37,9 +54,10 @@ export async function setupTestContainers(): Promise<SetupResult> {
   }
 
   return {
-    DATABASE_URL: "postgresql://postgres:postgres@localhost:15432/postgres",
-    REDIS_URL: "redis://localhost:16379",
-    REDIS_HTTP_URL: "http://localhost:18079",
+    DATABASE_URL:
+      "postgresql://postgres:postgres@terragon_postgres_test:5432/postgres",
+    REDIS_URL: "redis://terragon_redis_test:6379",
+    REDIS_HTTP_URL: "http://terragon_redis_http_test:80",
     REDIS_HTTP_TOKEN,
   };
 }

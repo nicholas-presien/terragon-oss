@@ -1,6 +1,16 @@
-import { auth } from "@/lib/auth";
-import { toNextJsHandler } from "better-auth/next-js";
+import { NextResponse } from "next/server";
 
-const handler = toNextJsHandler(auth.handler);
+// Auth routes stub - Better Auth has been removed for self-hosted mode.
+export async function GET() {
+  return NextResponse.json(
+    { error: "Auth is not available in self-hosted mode" },
+    { status: 404 },
+  );
+}
 
-export const { GET, POST } = handler;
+export async function POST() {
+  return NextResponse.json(
+    { error: "Auth is not available in self-hosted mode" },
+    { status: 404 },
+  );
+}

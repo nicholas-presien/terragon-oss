@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
 import { env } from "@terragon/env/apps-www";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-import { maybeTriggerCreditAutoReload } from "@/server-lib/credit-auto-reload";
+import { DEFAULT_USER_ID } from "@/lib/default-user";
 import { logGoogleUsage } from "../log-google-usage";
-import { waitUntil } from "@vercel/functions";
 import { validateProxyRequestModel } from "@/server-lib/proxy-model-validation";
 
 const GOOGLE_API_BASE = "https://generativelanguage.googleapis.com/";
@@ -341,41 +337,12 @@ async function authorize(request: NextRequest): Promise<
     };
   }
 
-  try {
-    const { valid, error, key } = await auth.api.verifyApiKey({
-      body: { key: token },
-    });
-
-    const userId = key?.userId;
-
-    if (error || !valid || !userId) {
-      console.log("Unauthorized Google proxy request", {
-        error,
-        valid,
-      });
-      return { response: new Response("Unauthorized", { status: 401 }) };
-    }
-
-    const { balanceCents } = await getUserCreditBalance({
-      db,
-      userId,
-      skipAggCache: false,
-    });
-    waitUntil(maybeTriggerCreditAutoReload({ userId, balanceCents }));
-    if (balanceCents <= 0) {
-      console.log("Google proxy access denied: insufficient credits", {
-        userId,
-        balanceCents,
-      });
-      return {
-        response: new Response("Insufficient credits", { status: 402 }),
-      };
-    }
-    return { response: null, userId, bodyBuffer, model };
-  } catch (err) {
-    console.error("Failed to verify Google proxy request", err);
+  if (token !== env.INTERNAL_SHARED_SECRET) {
+    console.log("Unauthorized Google proxy request");
     return { response: new Response("Unauthorized", { status: 401 }) };
   }
+
+  return { response: null, userId: DEFAULT_USER_ID, bodyBuffer, model };
 }
 
 async function handleWithAuth(

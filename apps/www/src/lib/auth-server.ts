@@ -1,5 +1,3 @@
-import { auth } from "./auth";
-import { headers } from "next/headers";
 import { db } from "@/lib/db";
 import {
   User,
@@ -23,30 +21,23 @@ import {
   ServerActionResult,
 } from "./server-actions";
 import { getUserCredentials } from "@/server-lib/user-credentials";
+import { DEFAULT_USER_ID, DEFAULT_USER, DEFAULT_SESSION } from "./default-user";
 
 export const getSessionOrNull = cache(
   async (): Promise<{
     session: Session;
     user: User;
   } | null> => {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-    return session ?? null;
+    return { session: DEFAULT_SESSION, user: DEFAULT_USER };
   },
 );
 
 export async function getUserIdOrNull(): Promise<User["id"] | null> {
-  const session = await getSessionOrNull();
-  return session?.user.id ?? null;
+  return DEFAULT_USER_ID;
 }
 
 export async function getUserIdOrRedirect(): Promise<User["id"]> {
-  const userId = await getUserIdOrNull();
-  if (!userId) {
-    redirect("/");
-  }
-  return userId;
+  return DEFAULT_USER_ID;
 }
 
 export async function getUserIdOrNullFromDaemonToken(
@@ -56,32 +47,14 @@ export async function getUserIdOrNullFromDaemonToken(
   if (!token) {
     return null;
   }
-  const { valid, error, key } = await auth.api.verifyApiKey({
-    body: { key: token },
-  });
-  const userId = key?.userId;
-  if (error || !valid || !userId) {
-    console.log(
-      "Unauthorized",
-      "error",
-      error,
-      "valid",
-      valid,
-      "userId",
-      userId,
-    );
-    return null;
+  if (token === env.INTERNAL_SHARED_SECRET) {
+    return DEFAULT_USER_ID;
   }
-  return userId;
+  return null;
 }
 
 export async function getUserOrNull(): Promise<User | null> {
-  const session = await getSessionOrNull();
-  const user = session?.user ?? null;
-  if (!user) {
-    return null;
-  }
-  return user;
+  return DEFAULT_USER;
 }
 
 type UserInfo = {
@@ -99,12 +72,6 @@ type UserInfo = {
 };
 
 export const getUserInfoOrNull = cache(async (): Promise<UserInfo | null> => {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-  if (!session) {
-    return null;
-  }
   const [
     userSettings,
     userFlags,
@@ -114,31 +81,31 @@ export const getUserInfoOrNull = cache(async (): Promise<UserInfo | null> => {
   ] = await Promise.all([
     getUserSettings({
       db,
-      userId: session.user.id,
+      userId: DEFAULT_USER_ID,
     }),
     getUserFlags({
       db,
-      userId: session.user.id,
+      userId: DEFAULT_USER_ID,
     }),
     getFeatureFlagsForUser({
       db,
-      userId: session.user.id,
+      userId: DEFAULT_USER_ID,
     }),
     getUserCookies(),
     getUserCredentials({
-      userId: session.user.id,
+      userId: DEFAULT_USER_ID,
     }),
   ]);
   return {
-    ...session,
+    session: DEFAULT_SESSION,
+    user: DEFAULT_USER,
     userSettings,
     userFlags: getUserFlagsNormalized(userFlags),
     userFeatureFlags,
     userCookies,
     userCredentials,
     impersonation: {
-      isImpersonating: !!session.session.impersonatedBy,
-      impersonatedBy: session.session.impersonatedBy || undefined,
+      isImpersonating: false,
     },
   };
 });
@@ -152,30 +119,18 @@ export async function getUserInfoOrRedirect(): Promise<UserInfo> {
 }
 
 async function getAdminUserOrNull(): Promise<User | null> {
-  const user = await getUserOrNull();
-  if (!user || user.role !== "admin") {
-    return null;
-  }
-  return user;
+  return DEFAULT_USER;
 }
 
 export async function getAdminUserOrThrow(): Promise<User> {
-  const user = await getAdminUserOrNull();
-  if (!user) {
-    throw new UserFacingError("Unauthorized");
-  }
-  return user;
+  return DEFAULT_USER;
 }
 
 function userOnly<T extends Array<any>, U>(
   callback: (userId: string, ...args: T) => Promise<U>,
 ) {
   const wrapped = async (...args: T): Promise<U> => {
-    const userId = await getUserIdOrNull();
-    if (!userId) {
-      throw new UserFacingError("Unauthorized");
-    }
-    return await callback(userId, ...args);
+    return await callback(DEFAULT_USER_ID, ...args);
   };
   // For testing purposes
   wrapped.userOnly = true;
@@ -205,8 +160,7 @@ export function adminOnly<T extends Array<any>, U>(
   callback: (adminUser: User, ...args: T) => Promise<U>,
 ) {
   const wrapped = async (...args: T): Promise<U> => {
-    const adminUser = await getAdminUserOrThrow();
-    return await callback(adminUser, ...args);
+    return await callback(DEFAULT_USER, ...args);
   };
   // For testing purposes
   wrapped.adminOnly = true;
@@ -233,11 +187,7 @@ export function adminOnlyAction<T extends Array<any>, U>(
 }
 
 export async function getCurrentUser(): Promise<User> {
-  const user = await getUserOrNull();
-  if (!user) {
-    throw new Error("Unauthorized");
-  }
-  return user;
+  return DEFAULT_USER;
 }
 
 function getUserFlagsNormalized(userFlags: UserFlags) {
@@ -254,6 +204,7 @@ function getUserFlagsNormalized(userFlags: UserFlags) {
 }
 
 export async function validInternalRequestOrThrow() {
+  const { headers } = await import("next/headers");
   const requestHeaders = await headers();
   const secret = requestHeaders.get("X-Terragon-Secret");
   if (secret !== env.INTERNAL_SHARED_SECRET) {

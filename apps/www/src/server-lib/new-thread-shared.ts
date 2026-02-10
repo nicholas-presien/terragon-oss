@@ -32,7 +32,6 @@ import {
   getDefaultBranchForRepo,
 } from "@/lib/github";
 import { uploadUserMessageImages } from "@/lib/r2-file-upload-server";
-import { checkShadowBanTaskCreationRateLimit } from "@/lib/rate-limit";
 import { getAccessInfoForUser } from "@/lib/subscription";
 import { SUBSCRIPTION_MESSAGES } from "@/lib/subscription-msgs";
 import { getDefaultModel } from "./default-ai-model";
@@ -86,8 +85,6 @@ export async function createNewThread({
   sourceMetadata,
   delayMs = 0,
 }: CreateThreadOptions): Promise<{ threadId: string; threadChatId: string }> {
-  // Enforce per-user shadow-ban rate limit if applicable
-  await checkShadowBanTaskCreationRateLimit(userId);
   const { tier } = await getAccessInfoForUser(userId);
   if (tier === "none") {
     throw new Error(SUBSCRIPTION_MESSAGES.CREATE_TASK);

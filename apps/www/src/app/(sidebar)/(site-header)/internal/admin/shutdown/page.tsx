@@ -1,10 +1,14 @@
 import { getAdminUserOrThrow } from "@/lib/auth-server";
-import { ShutdownControls } from "@/components/admin/shutdown-controls";
-import { getActiveSubscriptionCount } from "@/server-actions/admin/subscriptions";
 
 export default async function ShutdownAdminPage() {
   await getAdminUserOrThrow();
-  const subscriptionCount = await getActiveSubscriptionCount();
 
-  return <ShutdownControls initialSubscriptionCount={subscriptionCount} />;
+  return (
+    <div className="flex flex-col gap-4 p-4">
+      <h1 className="text-2xl font-bold">Shutdown Controls</h1>
+      <p className="text-muted-foreground">
+        Not available in self-hosted mode.
+      </p>
+    </div>
+  );
 }

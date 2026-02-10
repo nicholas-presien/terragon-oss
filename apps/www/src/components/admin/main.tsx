@@ -6,8 +6,6 @@ import {
   Monitor,
   FolderOpen,
   Wrench,
-  TicketPercent,
-  ShieldAlert,
   type LucideIcon,
 } from "lucide-react";
 
@@ -34,17 +32,7 @@ const adminCategories: AdminCategory[] = [
   {
     name: "Analytics & Engagement",
     icon: BarChart3,
-    sections: [
-      { title: "Re-engagement", href: "/internal/admin/reengagement" },
-      { title: "Feedback", href: "/internal/admin/feedback" },
-    ],
-  },
-  {
-    name: "Security & Abuse",
-    icon: ShieldAlert,
-    sections: [
-      { title: "Abuse Detection", href: "/internal/admin/abuse-detection" },
-    ],
+    sections: [{ title: "Feedback", href: "/internal/admin/feedback" }],
   },
   {
     name: "Configuration",
@@ -52,16 +40,6 @@ const adminCategories: AdminCategory[] = [
     sections: [
       { title: "Feature Flags", href: "/internal/admin/feature-flags" },
       { title: "Top Banner", href: "/internal/admin/banner" },
-    ],
-  },
-  {
-    name: "Billing & Credits",
-    icon: TicketPercent,
-    sections: [
-      { title: "Stripe Coupons", href: "/internal/admin/stripe-coupons" },
-      { title: "Credits Usage", href: "/internal/admin/credits" },
-      { title: "Credit Tester", href: "/internal/admin/credit-tester" },
-      { title: "Shutdown Controls", href: "/internal/admin/shutdown" },
     ],
   },
   {

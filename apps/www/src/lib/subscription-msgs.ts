@@ -1,19 +1,11 @@
-/**
- * Subscription error messages
- * Centralized location for all subscription-related error messages
- */
+// Subscription messages stub for self-hosted mode.
+// These should be unreachable since tier is always "pro".
 
 export const SUBSCRIPTION_MESSAGES = {
-  CREATE_TASK:
-    "You need an active subscription to create a task. Visit Settings → Billing to subscribe.",
-  FOLLOW_UP:
-    "You need an active subscription to follow up on a task. Visit Settings → Billing to subscribe.",
-  QUEUE_FOLLOW_UP:
-    "You need an active subscription to queue follow-ups. Visit Settings → Billing to subscribe.",
-  RUN_TASK:
-    "You need an active subscription to run tasks. Visit Settings → Billing to subscribe.",
-  RUN_AUTOMATION:
-    "You need an active subscription to run automations. Visit Settings → Billing to subscribe.",
-  CREATE_AUTOMATION:
-    "You need an active subscription to create automations. Visit Settings → Billing to subscribe.",
+  CREATE_TASK: "Unexpected error - please try again.",
+  FOLLOW_UP: "Unexpected error - please try again.",
+  QUEUE_FOLLOW_UP: "Unexpected error - please try again.",
+  RUN_TASK: "Unexpected error - please try again.",
+  RUN_AUTOMATION: "Unexpected error - please try again.",
+  CREATE_AUTOMATION: "Unexpected error - please try again.",
 } as const;

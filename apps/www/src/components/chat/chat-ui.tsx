@@ -32,11 +32,9 @@ import { stopThread } from "@/server-actions/stop-thread";
 import { ChatError } from "./chat-error";
 import { ThreadProvider } from "./thread-context";
 import { ThreadPromptBox } from "@/components/promptbox/thread-promptbox";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useAccessInfo } from "@/queries/subscription";
+import { useQuery } from "@tanstack/react-query";
 import { threadQueryOptions } from "@/queries/thread-queries";
 import dynamic from "next/dynamic";
-import { SUBSCRIPTION_MESSAGES } from "@/lib/subscription-msgs";
 import { isAgentWorking } from "@/agent/thread-status";
 import {
   useMarkChatAsRead,
@@ -55,9 +53,6 @@ import { ContextWarning } from "./context-warning";
 import { useFeatureFlag } from "@/hooks/use-feature-flag";
 import { HandleSubmit } from "../promptbox/use-promptbox";
 import { TerminalPanel } from "./terminal-panel";
-import { useCredentialInfoForAgent } from "@/atoms/user-credentials";
-import { IncludedCreditsUpsell } from "./included-credits-upsell";
-import { USER_CREDIT_BALANCE_QUERY_KEY } from "@/queries/user-credit-balance-queries";
 import { ensureAgent } from "@terragon/agent/utils";
 import { SecondaryPanel } from "./secondary-panel";
 import { useServerActionMutation } from "@/queries/server-action-helpers";
@@ -72,7 +67,6 @@ function ChatUI({
   threadId: string;
   isReadOnly: boolean;
 }) {
-  const queryClient = useQueryClient();
   const { messagesEndRef, isAtBottom, forceScrollToBottom } =
     useScrollToBottom();
   const [error, setError] = useState<ThreadErrorMessage | null>(null);
@@ -131,42 +125,9 @@ function ChatUI({
     });
   }, [threadChat]);
 
-  const credentialInfo = useCredentialInfoForAgent(
-    ensureAgent(threadChat?.agent),
-  );
-  const showIncludedCreditsUpsell = useMemo(() => {
-    if (!threadChat || isReadOnly) {
-      return false;
-    }
-    if (!credentialInfo || credentialInfo.canInvokeAgent) {
-      return false;
-    }
-    if (!credentialInfo.isOutOfCredits) {
-      return false;
-    }
-    return true;
-  }, [threadChat, isReadOnly, credentialInfo]);
-
   const isAgentCurrentlyWorking = threadChat
     ? isAgentWorking(threadChat.status)
     : false;
-  const previousAgentWorkingRef = useRef<boolean | null>(null);
-
-  useEffect(() => {
-    const previousIsWorking = previousAgentWorkingRef.current;
-
-    if (
-      previousIsWorking !== null &&
-      previousIsWorking !== isAgentCurrentlyWorking &&
-      !isAgentCurrentlyWorking
-    ) {
-      void queryClient.invalidateQueries({
-        queryKey: USER_CREDIT_BALANCE_QUERY_KEY,
-      });
-    }
-
-    previousAgentWorkingRef.current = isAgentCurrentlyWorking;
-  }, [isAgentCurrentlyWorking, queryClient]);
 
   const hasScrolledRef = useRef(false);
 
@@ -286,9 +247,6 @@ function ChatUI({
                     isRetrying={retryMutation.isPending}
                   />
                 )}
-                {showIncludedCreditsUpsell && (
-                  <IncludedCreditsUpsell agent={chatAgent} />
-                )}
                 {isAgentCurrentlyWorking && (
                   <WorkingMessage
                     agent={chatAgent}
@@ -360,7 +318,6 @@ function ChatPromptBox({
   const threadId = thread.id;
   const threadChatId = threadChat.id;
   const chatAgent = ensureAgent(threadChat.agent);
-  const { isActive } = useAccessInfo();
   const showContextUsageChip = useFeatureFlag("contextUsageChip");
   // Don't immediately show the scroll button - wait for the page to scroll to the bottom first.
   const [showScrollButton, setShowScrollButton] = useState(false);
@@ -385,10 +342,6 @@ function ChatPromptBox({
     async ({ userMessage }) => {
       const plainText = convertToPlainText({ message: userMessage });
       if (plainText.length === 0) {
-        return;
-      }
-      if (!isActive) {
-        setError(SUBSCRIPTION_MESSAGES.FOLLOW_UP);
         return;
       }
       forceScrollToBottom();
@@ -422,7 +375,6 @@ function ChatPromptBox({
       refetch,
       setError,
       forceScrollToBottom,
-      isActive,
     ],
   );
 

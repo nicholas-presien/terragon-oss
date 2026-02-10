@@ -1,9 +1,7 @@
 export const devDefaultDatabaseUrl =
   "postgresql://postgres:postgres@localhost:5432/postgres";
-export const devDefaultBetterAuthUrl = "http://localhost:3000";
-export const devDefaultAppUrl = devDefaultBetterAuthUrl;
+export const devDefaultAppUrl = "http://localhost:3000";
 export const devDefaultWwwPort = 3000;
-export const devDefaultBetterAuthSecret = "123456";
 export const devDefaultInternalSharedSecret = "123456";
 export const devDefaultCronSecret = "123456";
 export const devDefaultBroadcastPort = "1999";

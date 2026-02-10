@@ -2,28 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { NextRequest } from "next/server";
 import * as aiSdkRoute from "./[[...path]]/route";
 import { logOpenRouterUsage } from "./log-usage";
-import { auth } from "@/lib/auth";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      verifyApiKey: vi.fn(),
-    },
-  },
-}));
-
-vi.mock("@terragon/shared/model/credits", () => ({
-  getUserCreditBalance: vi.fn(),
-}));
-
-vi.mock("@/server-lib/credit-auto-reload", () => ({
-  maybeTriggerCreditAutoReload: vi.fn(),
-}));
 
 vi.mock("@terragon/env/apps-www", () => ({
   env: {
     OPENROUTER_API_KEY: "test-openrouter-key",
+    INTERNAL_SHARED_SECRET: "test-daemon-token",
   },
 }));
 
@@ -70,24 +53,12 @@ function createRequest({
 }
 
 describe("OpenRouter proxy route", () => {
-  const verifyApiKeyMock = vi.mocked(auth.api.verifyApiKey);
-  const getUserCreditBalanceMock = vi.mocked(getUserCreditBalance);
   const logUsageMock = vi.mocked(logOpenRouterUsage);
   const { POST } = aiSdkRoute;
 
   beforeEach(async () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
-    verifyApiKeyMock.mockResolvedValue({
-      valid: true,
-      error: null,
-      key: { userId: "user-123" } as any,
-    });
-    getUserCreditBalanceMock.mockResolvedValue({
-      totalCreditsCents: 1_000,
-      totalUsageCents: 0,
-      balanceCents: 1_000,
-    });
     logUsageMock.mockReset();
     logUsageMock.mockImplementation(async () => {});
   });
@@ -151,12 +122,12 @@ describe("OpenRouter proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: "/api/v1/chat/completions",
       usage: responsePayload.usage,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: responsePayload.model,
     });
   });
 
-  it("authorizes requests using the Authorization header token", async () => {
+  it("authorizes requests using the Authorization Bearer header", async () => {
     const fetchResponse = new Response(JSON.stringify({}), {
       headers: {
         "content-type": "application/json",
@@ -169,19 +140,16 @@ describe("OpenRouter proxy route", () => {
     const request = createRequest({
       includeDefaultToken: false,
       headers: {
-        Authorization: "Bearer another-daemon-token",
+        Authorization: "Bearer test-daemon-token",
       },
       body: { model: "qwen/qwen3-coder:exacto", messages: [] },
     });
 
-    await POST(request, {
+    const response = await POST(request, {
       params: Promise.resolve({}),
     });
 
-    expect(verifyApiKeyMock).toHaveBeenCalledWith({
-      body: { key: "another-daemon-token" },
-    });
-
+    expect(response.status).toBe(200);
     const fetchHeaders =
       (fetchMock.mock.calls[0]![1]!.headers as Headers) ?? new Headers();
     expect(fetchHeaders.get("Authorization")).toBe(
@@ -189,23 +157,23 @@ describe("OpenRouter proxy route", () => {
     );
   });
 
-  it("rejects requests when user has no remaining credits", async () => {
-    getUserCreditBalanceMock.mockResolvedValueOnce({
-      totalCreditsCents: 0,
-      totalUsageCents: 0,
-      balanceCents: 0,
-    });
-
+  it("rejects requests with invalid daemon token", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const request = createRequest();
+    const request = createRequest({
+      includeDefaultToken: false,
+      headers: {
+        Authorization: "Bearer wrong-token",
+      },
+      body: { model: "qwen/qwen3-coder:exacto", messages: [] },
+    });
+
     const response = await POST(request, {
       params: Promise.resolve({}),
     });
 
-    expect(response.status).toBe(402);
-    expect(await response.text()).toBe("Insufficient credits");
+    expect(response.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -293,7 +261,7 @@ describe("OpenRouter proxy route", () => {
         completion_tokens: 50,
         total_tokens: 150,
       },
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: "qwen/qwen3-coder:exacto",
     });
   });

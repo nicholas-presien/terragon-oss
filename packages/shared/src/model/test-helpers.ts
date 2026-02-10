@@ -48,54 +48,7 @@ export async function createTestUser({
   const user = insertUserResult[0]!;
   await getUserFlags({ db, userId: user.id });
 
-  const accountId = Math.floor(Math.random() * 10000000).toString();
-  const insertAccountResult = await db
-    .insert(schema.account)
-    .values({
-      id: accountId,
-      accountId,
-      providerId: "github",
-      userId: user.id,
-      accessToken: "123",
-      refreshToken: "123",
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    })
-    .returning();
-  if (insertAccountResult.length === 0) {
-    throw new Error("Failed to create test account");
-  }
-  const githubAccount = insertAccountResult[0]!;
-
-  // Setup access tier for the user
-  await db.insert(schema.subscription).values({
-    id: nanoid(),
-    plan: accessTier,
-    status: "active",
-    periodStart: new Date(Date.now() - 1000 * 60 * 60 * 24 * 30),
-    periodEnd: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-    referenceId: user.id,
-  });
-
-  // Create a session for the user
-  const sessionId = nanoid();
-  const token = nanoid();
-  const insertSessionResult = await db
-    .insert(schema.session)
-    .values({
-      id: sessionId,
-      userId: user.id,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      token,
-    })
-    .returning();
-  if (insertSessionResult.length === 0) {
-    throw new Error("Failed to create test session");
-  }
-  const session = insertSessionResult[0]!;
-  return { user, githubAccount, session };
+  return { user };
 }
 
 /**

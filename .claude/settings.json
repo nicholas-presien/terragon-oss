@@ -21,7 +21,9 @@
       "Bash(cat:*)",
       "Bash(which:*)",
       "Bash(ps:*)",
-      "mcp__ide__getDiagnostics"
+      "mcp__ide__getDiagnostics",
+      "Read(//home/node/workspace/**)",
+      "Bash(cut:*)"
     ]
   },
   "enableAllProjectMcpServers": false

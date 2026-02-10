@@ -7,7 +7,10 @@ import {
   createTestUser,
   setFeatureFlagOverrideForTest,
 } from "@terragon/shared/model/test-helpers";
-import { updateUserSettings } from "@terragon/shared/model/user";
+import {
+  updateUserSettings,
+  getUserIdByGitHubAccountId,
+} from "@terragon/shared/model/user";
 import { db } from "@/lib/db";
 import * as schema from "@terragon/shared/db/schema";
 import { newThreadInternal } from "@/server-lib/new-thread-internal";
@@ -24,6 +27,14 @@ import { getDiffContextStr } from "./utils";
 import { createAutomation } from "@terragon/shared/model/automations";
 import { convertToPlainText } from "@/lib/db-message-helpers";
 import { redis } from "@/lib/redis";
+
+vi.mock("@terragon/shared/model/user", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    getUserIdByGitHubAccountId: vi.fn().mockResolvedValue(null),
+  };
+});
 
 vi.mock("@/server-lib/new-thread-internal", () => ({
   newThreadInternal: vi.fn().mockResolvedValue({ id: "new-thread-created-id" }),
@@ -45,7 +56,7 @@ describe("handleAppMention", () => {
   beforeAll(async () => {
     const testUserResult = await createTestUser({ db });
     user = testUserResult.user;
-    githubAccountId = parseInt(testUserResult.githubAccount.id);
+    githubAccountId = Math.floor(Math.random() * 10000000);
     pr = await createTestGitHubPR({ db });
     prWithNoThread = await createTestGitHubPR({ db });
     const createTestThreadResult = await createTestThread({
@@ -61,8 +72,9 @@ describe("handleAppMention", () => {
   });
 
   beforeEach(async () => {
-    // Clear Redis batch keys to ensure test isolation
-    const keys = await redis.keys("thread-batch:*");
+    // Clear Redis batch keys for this test user only to ensure test isolation
+    // (using user-scoped pattern to avoid interfering with batch-threads tests)
+    const keys = await redis.keys(`thread-batch:${user.id}:*`);
     if (keys.length > 0) {
       await redis.del(...keys);
     }
@@ -88,6 +100,17 @@ describe("handleAppMention", () => {
       },
     };
     vi.clearAllMocks();
+    // Mock getUserIdByGitHubAccountId to return the test user's ID
+    // when the matching githubAccountId is passed (since this always returns
+    // null in self-hosted mode)
+    vi.mocked(getUserIdByGitHubAccountId).mockImplementation(
+      async ({ accountId }) => {
+        if (accountId === githubAccountId.toString()) {
+          return user.id;
+        }
+        return null;
+      },
+    );
     vi.mocked(getOctokitForUser).mockResolvedValue(mockOctokit as any);
     vi.mocked(getOctokitForApp).mockResolvedValue(mockOctokit as any);
     // Reset newThreadInternal to successful state

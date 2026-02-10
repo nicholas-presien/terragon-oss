@@ -43,6 +43,15 @@ vi.mock("@/lib/github", async (importOriginal) => {
     findAndAssociatePR: vi.fn().mockResolvedValue(null),
   };
 });
+vi.mock("@terragon/shared/model/user", async (importOriginal) => {
+  const actual = (await importOriginal()) as any;
+  return {
+    ...actual,
+    getGitHubUserAccessTokenOrThrow: vi
+      .fn()
+      .mockResolvedValue("mock-github-access-token"),
+  };
+});
 vi.mock("@/agent/daemon", () => ({
   sendDaemonMessage: vi.fn(),
 }));

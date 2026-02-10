@@ -2,28 +2,11 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { NextRequest } from "next/server";
 import * as aiSdkRoute from "./[[...path]]/route";
 import { logAnthropicUsage } from "./log-anthropic-usage";
-import { auth } from "@/lib/auth";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      verifyApiKey: vi.fn(),
-    },
-  },
-}));
-
-vi.mock("@terragon/shared/model/credits", () => ({
-  getUserCreditBalance: vi.fn(),
-}));
-
-vi.mock("@/server-lib/credit-auto-reload", () => ({
-  maybeTriggerCreditAutoReload: vi.fn(),
-}));
 
 vi.mock("@terragon/env/apps-www", () => ({
   env: {
     ANTHROPIC_API_KEY: "test-anthropic-key",
+    INTERNAL_SHARED_SECRET: "test-daemon-token",
   },
 }));
 
@@ -76,24 +59,12 @@ function createRequest({
 }
 
 describe("Anthropic proxy route", () => {
-  const verifyApiKeyMock = vi.mocked(auth.api.verifyApiKey);
-  const getUserCreditBalanceMock = vi.mocked(getUserCreditBalance);
   const logUsageMock = vi.mocked(logAnthropicUsage);
   const { POST } = aiSdkRoute;
 
   beforeEach(async () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
-    verifyApiKeyMock.mockResolvedValue({
-      valid: true,
-      error: null,
-      key: { userId: "user-123" } as any,
-    });
-    getUserCreditBalanceMock.mockResolvedValue({
-      totalCreditsCents: 1_000,
-      totalUsageCents: 0,
-      balanceCents: 1_000,
-    });
     logUsageMock.mockReset();
     logUsageMock.mockImplementation(async () => {});
   });
@@ -145,13 +116,13 @@ describe("Anthropic proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: "/v1/messages",
       usage: responsePayload.usage,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: responsePayload.model,
       messageId: responsePayload.id,
     });
   });
 
-  it("authorizes requests using the Authorization header token", async () => {
+  it("authorizes requests using the Authorization Bearer header", async () => {
     const fetchResponse = new Response(JSON.stringify({}), {
       headers: {
         "content-type": "application/json",
@@ -164,37 +135,34 @@ describe("Anthropic proxy route", () => {
     const request = createRequest({
       includeDefaultToken: false,
       headers: {
-        Authorization: "Bearer another-daemon-token",
+        Authorization: "Bearer test-daemon-token",
       },
       body: { model: VALID_MODEL, messages: [] },
     });
 
-    await POST(request, { params: {} });
+    const response = await POST(request, { params: {} });
 
-    expect(verifyApiKeyMock).toHaveBeenCalledWith({
-      body: { key: "another-daemon-token" },
-    });
-
+    expect(response.status).toBe(200);
     const fetchHeaders =
       (fetchMock.mock.calls[0]![1]!.headers as Headers) ?? new Headers();
     expect(fetchHeaders.get("Authorization")).toBeNull();
   });
 
-  it("rejects requests when user has no remaining credits", async () => {
-    getUserCreditBalanceMock.mockResolvedValueOnce({
-      totalCreditsCents: 0,
-      totalUsageCents: 0,
-      balanceCents: 0,
-    });
-
+  it("rejects requests with invalid daemon token", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const request = createRequest();
+    const request = createRequest({
+      includeDefaultToken: false,
+      headers: {
+        Authorization: "Bearer wrong-token",
+      },
+      body: { model: VALID_MODEL, messages: [] },
+    });
+
     const response = await POST(request, { params: {} });
 
-    expect(response.status).toBe(402);
-    expect(await response.text()).toBe("Insufficient credits");
+    expect(response.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -271,7 +239,7 @@ describe("Anthropic proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: "/v1/messages",
       usage: events[2]!.data.usage,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: "claude-3-5-sonnet-20241022",
       messageId: "msg_01j0h6rj5n7tfn0r5x0k2vqxga",
     });

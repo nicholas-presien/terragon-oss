@@ -1,20 +1,23 @@
-import { createAuthClient } from "better-auth/react";
-import { publicAppUrl } from "@terragon/env/next-public";
-import {
-  apiKeyClient,
-  magicLinkClient,
-  adminClient,
-} from "better-auth/client/plugins";
-import { stripeClient } from "@better-auth/stripe/client";
+// Auth client stub for self-hosted mode - Better Auth has been removed.
+// No-op methods to satisfy any remaining client-side references.
 
-export const authClient = createAuthClient({
-  baseURL: publicAppUrl(),
-  plugins: [
-    apiKeyClient(),
-    magicLinkClient(),
-    adminClient(),
-    stripeClient({
-      subscription: true, //if you want to enable subscription management
-    }),
-  ],
-});
+export const authClient = {
+  signOut: async () => {},
+  signIn: {
+    social: async () => {},
+    magicLink: async () => {},
+  },
+  admin: {
+    impersonateUser: async () => {},
+    stopImpersonating: async () => {},
+  },
+  useSession: () => ({
+    data: null,
+    isPending: false,
+    error: null,
+  }),
+  subscription: {
+    upgrade: async () => {},
+    list: async () => ({ data: [] }),
+  },
+};

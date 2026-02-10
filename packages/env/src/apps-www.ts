@@ -1,12 +1,10 @@
-import { envsafe, str, bool, num } from "envsafe";
+import { envsafe, str, num } from "envsafe";
 import {
   devDefaultDatabaseUrl,
-  devDefaultBetterAuthSecret,
   devDefaultCronSecret,
   devDefaultInternalSharedSecret,
   devDefaultIsAnthropicDownUrl,
   devDefaultIsAnthropicDownApiSecret,
-  devDefaultBetterAuthUrl,
   devDefaultRedisUrl,
   devDefaultRedisToken,
 } from "./common";
@@ -20,12 +18,6 @@ export const env = envsafe({
   }),
   REDIS_TOKEN: str({
     devDefault: devDefaultRedisToken,
-  }),
-  BETTER_AUTH_SECRET: str({
-    devDefault: devDefaultBetterAuthSecret,
-  }),
-  BETTER_AUTH_URL: str({
-    devDefault: devDefaultBetterAuthUrl,
   }),
   IS_ANTHROPIC_DOWN_URL: str({
     devDefault: devDefaultIsAnthropicDownUrl,
@@ -98,15 +90,4 @@ export const env = envsafe({
 
   // Others
   RESEND_API_KEY: str({ allowEmpty: true, default: "" }),
-  DISABLE_ONE_TIME_TOKEN_SIGNIN: bool({ default: true }),
-
-  // Stripe
-  STRIPE_SECRET_KEY: str({ allowEmpty: true, default: "" }),
-  STRIPE_WEBHOOK_SECRET: str({ allowEmpty: true, default: "" }),
-  STRIPE_PRICE_CORE_MONTHLY: str({ allowEmpty: true, default: "" }),
-  STRIPE_PRICE_PRO_MONTHLY: str({ allowEmpty: true, default: "" }),
-  STRIPE_PRICE_CREDIT_PACK: str({ allowEmpty: true, default: "" }),
-
-  // Loops (marketing email & events)
-  LOOPS_API_KEY: str({ allowEmpty: true, default: "" }),
 });

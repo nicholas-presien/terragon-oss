@@ -1,11 +1,7 @@
 import { NextRequest } from "next/server";
 import { env } from "@terragon/env/apps-www";
-import { auth } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-import { maybeTriggerCreditAutoReload } from "@/server-lib/credit-auto-reload";
+import { DEFAULT_USER_ID } from "@/lib/default-user";
 import { logOpenRouterUsage } from "../log-usage";
-import { waitUntil } from "@vercel/functions";
 import { validateProxyRequestModel } from "@/server-lib/proxy-model-validation";
 
 const OPENROUTER_API_BASE = "https://openrouter.ai/api/";
@@ -321,38 +317,12 @@ async function authorize(request: NextRequest): Promise<
     };
   }
 
-  try {
-    const { valid, error, key } = await auth.api.verifyApiKey({
-      body: { key: token },
-    });
-
-    const userId = key?.userId;
-
-    if (error || !valid || !userId) {
-      console.log("Unauthorized OpenRouter proxy request", { error, valid });
-      return { response: new Response("Unauthorized", { status: 401 }) };
-    }
-
-    const { balanceCents } = await getUserCreditBalance({
-      db,
-      userId,
-      skipAggCache: false,
-    });
-    waitUntil(maybeTriggerCreditAutoReload({ userId, balanceCents }));
-    if (balanceCents <= 0) {
-      console.log("OpenRouter proxy access denied: insufficient credits", {
-        userId,
-        balanceCents,
-      });
-      return {
-        response: new Response("Insufficient credits", { status: 402 }),
-      };
-    }
-    return { response: null, userId, bodyBuffer };
-  } catch (err) {
-    console.error("Failed to verify OpenRouter proxy request", err);
+  if (token !== env.INTERNAL_SHARED_SECRET) {
+    console.log("Unauthorized OpenRouter proxy request");
     return { response: new Response("Unauthorized", { status: 401 }) };
   }
+
+  return { response: null, userId: DEFAULT_USER_ID, bodyBuffer };
 }
 
 async function handleWithAuth(

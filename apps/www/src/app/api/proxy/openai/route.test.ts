@@ -2,29 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { NextRequest } from "next/server";
 import * as aiSdkRoute from "./[[...path]]/route";
 import { logOpenAIUsage } from "./log-openai-usage";
-import { auth } from "@/lib/auth";
-import { getUserCreditBalance } from "@terragon/shared/model/credits";
-
-vi.mock("@/lib/auth", () => ({
-  auth: {
-    api: {
-      verifyApiKey: vi.fn(),
-    },
-  },
-}));
 
 vi.mock("@terragon/env/apps-www", () => ({
   env: {
     OPENAI_API_KEY: "test-openai-key",
+    INTERNAL_SHARED_SECRET: "test-daemon-token",
   },
-}));
-
-vi.mock("@terragon/shared/model/credits", () => ({
-  getUserCreditBalance: vi.fn(),
-}));
-
-vi.mock("@/server-lib/credit-auto-reload", () => ({
-  maybeTriggerCreditAutoReload: vi.fn(),
 }));
 
 vi.mock("./log-openai-usage", () => ({
@@ -75,24 +58,12 @@ function createRequest({
 }
 
 describe("OpenAI proxy route", () => {
-  const verifyApiKeyMock = vi.mocked(auth.api.verifyApiKey);
-  const getUserCreditBalanceMock = vi.mocked(getUserCreditBalance);
   const logUsageMock = vi.mocked(logOpenAIUsage);
   const { POST } = aiSdkRoute;
 
   beforeEach(async () => {
     vi.unstubAllGlobals();
     vi.clearAllMocks();
-    verifyApiKeyMock.mockResolvedValue({
-      valid: true,
-      error: null,
-      key: { userId: "user-123" } as any,
-    });
-    getUserCreditBalanceMock.mockResolvedValue({
-      totalCreditsCents: 1_000,
-      totalUsageCents: 0,
-      balanceCents: 1_000,
-    });
     logUsageMock.mockReset();
     logUsageMock.mockImplementation(async () => {});
   });
@@ -156,7 +127,7 @@ describe("OpenAI proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: "/v1/chat/completions",
       usage: responsePayload.usage,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: responsePayload.model,
     });
   });
@@ -246,12 +217,12 @@ describe("OpenAI proxy route", () => {
     expect(logUsageMock).toHaveBeenCalledWith({
       path: "/v1/responses",
       usage: responsePayload.usage,
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: responsePayload.model,
     });
   });
 
-  it("authorizes requests using the Authorization header token", async () => {
+  it("authorizes requests using the Authorization header with x-daemon-token prefix", async () => {
     const fetchResponse = new Response(JSON.stringify({}), {
       headers: {
         "content-type": "application/json",
@@ -264,37 +235,34 @@ describe("OpenAI proxy route", () => {
     const request = createRequest({
       includeDefaultToken: false,
       headers: {
-        Authorization: "X-Daemon-Token alt-daemon-token",
+        Authorization: "X-Daemon-Token test-daemon-token",
       },
       body: { model: "gpt-5.1-2025-04-14", prompt: "hi" },
     });
 
-    await POST(request, { params: Promise.resolve({}) });
+    const response = await POST(request, { params: Promise.resolve({}) });
 
-    expect(verifyApiKeyMock).toHaveBeenCalledWith({
-      body: { key: "alt-daemon-token" },
-    });
-
+    expect(response.status).toBe(200);
     const fetchHeaders =
       (fetchMock.mock.calls[0]![1]!.headers as Headers) ?? new Headers();
     expect(fetchHeaders.get("Authorization")).toBe("Bearer test-openai-key");
   });
 
-  it("rejects requests when user has no remaining credits", async () => {
-    getUserCreditBalanceMock.mockResolvedValueOnce({
-      totalCreditsCents: 0,
-      totalUsageCents: 0,
-      balanceCents: 0,
-    });
-
+  it("rejects requests with invalid daemon token", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
 
-    const request = createRequest();
+    const request = createRequest({
+      includeDefaultToken: false,
+      headers: {
+        Authorization: "X-Daemon-Token wrong-token",
+      },
+      body: { model: "gpt-5.1-2025-04-14", prompt: "hi" },
+    });
+
     const response = await POST(request, { params: Promise.resolve({}) });
 
-    expect(response.status).toBe(402);
-    expect(await response.text()).toBe("Insufficient credits");
+    expect(response.status).toBe(401);
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -378,7 +346,7 @@ describe("OpenAI proxy route", () => {
         completion_tokens: 5,
         total_tokens: 15,
       },
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: "gpt-5.1-2025-04-14",
     });
 
@@ -635,7 +603,7 @@ describe("OpenAI proxy route", () => {
         },
         total_tokens: 48,
       },
-      userId: "user-123",
+      userId: "self-hosted-default-user",
       model: "gpt-5",
     });
 

@@ -1,139 +1,46 @@
-import { DB } from "../db";
-import * as schema from "../db/schema";
-import {
-  SubscriptionInfo,
-  User,
-  SignupTrialInfo,
-  StripePromotionCode,
-  AccessTier,
-} from "../db/types";
-import { getUser, updateUser } from "./user";
-import { and, eq, gte, inArray, isNull } from "drizzle-orm";
+// Billing/subscription functionality removed for self-hosted deployment.
+// Stubs kept so existing imports don't break at compile time.
 
-// Number of days a new account has free trial access
-const SIGNUP_TRIAL_DAYS = 14;
+import type { AccessTier, SignupTrialInfo } from "../db/types";
 
-function diffInDaysCeil(later: Date, earlier: Date) {
-  const msPerDay = 24 * 60 * 60 * 1000;
-  return Math.ceil((later.getTime() - earlier.getTime()) / msPerDay);
-}
-/**
- * Returns remaining signup-trial days for a specific user id.
- * 0 when expired or user not found.
- */
-export function getSignupTrialInfo(
-  user: Pick<User, "createdAt" | "signupTrialPlan">,
-): SignupTrialInfo | null {
-  if (!user.createdAt) {
-    return null;
-  }
-  const trialEndsAt = new Date(
-    user.createdAt.getTime() + SIGNUP_TRIAL_DAYS * 24 * 60 * 60 * 1000,
-  );
-  const daysRemaining = Math.max(0, diffInDaysCeil(trialEndsAt, new Date()));
-  const isActive = daysRemaining > 0;
-  const plan = user.signupTrialPlan === "pro" ? "pro" : "core";
-  return {
-    isActive,
-    daysRemaining,
-    plan,
-    trialEndsAt: trialEndsAt.toISOString(),
-  };
+export type { SignupTrialInfo };
+
+/** Always returns null – no signup trial in self-hosted mode. */
+export function getSignupTrialInfo(_user: {
+  createdAt?: Date | null;
+  signupTrialPlan?: string | null;
+}): SignupTrialInfo | null {
+  return null;
 }
 
-export async function getSignupTrialInfoForUser({
-  db,
-  userId,
-}: {
-  db: DB;
+/** Always returns null – no signup trial in self-hosted mode. */
+export async function getSignupTrialInfoForUser(_opts: {
+  db: unknown;
   userId: string;
 }): Promise<SignupTrialInfo | null> {
-  const user = await getUser({ db, userId });
-  if (!user) {
-    return null;
-  }
-  return getSignupTrialInfo(user);
+  return null;
 }
 
-export async function getSubscriptionInfoForUser({
-  db,
-  userId,
-  isActive = true,
-}: {
-  db: DB;
+/** Always returns null – no subscriptions in self-hosted mode. */
+export async function getSubscriptionInfoForUser(_opts: {
+  db: unknown;
   userId: string;
   isActive?: boolean;
-}): Promise<SubscriptionInfo | null> {
-  const where = [eq(schema.subscription.referenceId, userId)];
-  if (isActive) {
-    where.push(inArray(schema.subscription.status, ["active", "past_due"]));
-    where.push(gte(schema.subscription.periodEnd, new Date()));
-  }
-  const result = await db
-    .select({
-      id: schema.subscription.id,
-      plan: schema.subscription.plan,
-      status: schema.subscription.status,
-      periodStart: schema.subscription.periodStart,
-      periodEnd: schema.subscription.periodEnd,
-      trialStart: schema.subscription.trialStart,
-      trialEnd: schema.subscription.trialEnd,
-      cancelAtPeriodEnd: schema.subscription.cancelAtPeriodEnd,
-    })
-    .from(schema.subscription)
-    .where(and(...where))
-    .limit(1);
-  if (!result[0]) {
-    return null;
-  }
-  const subscription = result[0]!;
-  return {
-    ...subscription,
-    isActive:
-      (subscription.status === "active" ||
-        subscription.status === "past_due") &&
-      !!subscription.periodEnd &&
-      subscription.periodEnd >= new Date(),
-  };
+}): Promise<null> {
+  return null;
 }
 
-export async function getUnusedPromotionCodeForUser({
-  db,
-  userId,
-}: {
-  db: DB;
+/** Always returns null – no promotion codes in self-hosted mode. */
+export async function getUnusedPromotionCodeForUser(_opts: {
+  db: unknown;
   userId: string;
-}): Promise<StripePromotionCode | null> {
-  const result = await db.query.userStripePromotionCode.findFirst({
-    where: and(
-      eq(schema.userStripePromotionCode.userId, userId),
-      isNull(schema.userStripePromotionCode.redeemedAt),
-    ),
-    columns: {
-      code: true,
-      stripeCouponId: true,
-      stripePromotionCodeId: true,
-    },
-  });
-  return result ?? null;
+}): Promise<null> {
+  return null;
 }
 
-export async function setSignupTrialPlanForUser({
-  db,
-  userId,
-  plan,
-}: {
-  db: DB;
+/** No-op – no signup trials in self-hosted mode. */
+export async function setSignupTrialPlanForUser(_opts: {
+  db: unknown;
   userId: string;
   plan: AccessTier;
-}): Promise<void> {
-  const user = await getUser({ db, userId });
-  if (!user) {
-    throw new Error("User not found");
-  }
-  const signupTrialInfo = getSignupTrialInfo(user);
-  if (!signupTrialInfo?.isActive) {
-    throw new Error("User is not on a signup trial");
-  }
-  await updateUser({ db, userId, updates: { signupTrialPlan: plan } });
-}
+}): Promise<void> {}

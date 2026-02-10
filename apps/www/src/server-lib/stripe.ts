@@ -1,118 +1,69 @@
-import Stripe from "stripe";
-import { env } from "@terragon/env/apps-www";
+// Stripe has been removed for self-hosted deployment.
+// These stubs preserve export names to prevent import errors.
 
 export function isStripeConfigured(): boolean {
-  if (!env.STRIPE_SECRET_KEY || !env.STRIPE_WEBHOOK_SECRET) {
-    console.warn(
-      "Stripe is not configured - missing STRIPE_SECRET_KEY or STRIPE_WEBHOOK_SECRET",
-    );
-    return false;
-  }
-  if (!env.STRIPE_PRICE_CORE_MONTHLY || !env.STRIPE_PRICE_PRO_MONTHLY) {
-    console.warn(
-      "Stripe is not configured - missing STRIPE_PRICE_CORE_MONTHLY or STRIPE_PRICE_PRO_MONTHLY",
-    );
-    return false;
-  }
-  return true;
+  return false;
 }
 
 export function isStripeConfiguredForCredits(): boolean {
-  if (!isStripeConfigured()) {
-    return false;
-  }
-  if (!env.STRIPE_PRICE_CREDIT_PACK) {
-    console.warn("Stripe is not configured - missing STRIPE_PRICE_CREDIT_PACK");
-    return false;
-  }
-  return true;
+  return false;
 }
 
 export function assertStripeConfigured(): void {
-  if (!isStripeConfigured()) {
-    throw new Error("Stripe is not configured");
-  }
+  throw new Error("Stripe is not configured in self-hosted mode");
 }
 
 export function assertStripeConfiguredForCredits(): void {
-  if (!isStripeConfiguredForCredits()) {
-    throw new Error("Stripe is not configured for credits");
-  }
+  throw new Error("Stripe is not configured in self-hosted mode");
 }
 
-export function getStripeClient(): Stripe {
-  if (!isStripeConfigured()) {
-    throw new Error("Stripe is not configured");
-  }
-  return new Stripe(env.STRIPE_SECRET_KEY);
+export function getStripeClient(): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export const STRIPE_PLAN_CONFIGS = [
-  ...(env.STRIPE_PRICE_CORE_MONTHLY
-    ? [{ name: "core", priceId: env.STRIPE_PRICE_CORE_MONTHLY }]
-    : []),
-  ...(env.STRIPE_PRICE_PRO_MONTHLY
-    ? [{ name: "pro", priceId: env.STRIPE_PRICE_PRO_MONTHLY }]
-    : []),
-];
+export const STRIPE_PLAN_CONFIGS: { name: string; priceId: string }[] = [];
 
 export function getStripeWebhookSecret(): string {
-  if (!isStripeConfigured()) {
-    throw new Error("Stripe is not configured");
-  }
-  return env.STRIPE_WEBHOOK_SECRET;
+  throw new Error("Stripe is not configured in self-hosted mode");
 }
 
 export function getStripeCreditPackPriceId(): string {
-  if (!isStripeConfiguredForCredits()) {
-    throw new Error("Stripe is not configured for credits");
-  }
-  return env.STRIPE_PRICE_CREDIT_PACK;
+  throw new Error("Stripe is not configured in self-hosted mode");
 }
 
-/**
- * Wrappers for Stripe API methods to make them easier to mock in tests
- */
 export async function stripeCheckoutSessionsCreate(
-  params: Stripe.Checkout.SessionCreateParams,
-) {
-  return getStripeClient().checkout.sessions.create(params);
+  _params: unknown,
+): Promise<never> {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export async function stripeCustomersCreate(
-  params: Stripe.CustomerCreateParams,
-) {
-  return getStripeClient().customers.create(params);
+export async function stripeCustomersCreate(_params: unknown): Promise<never> {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export function stripeInvoicesCreate(params: Stripe.InvoiceCreateParams) {
-  return getStripeClient().invoices.create(params);
+export function stripeInvoicesCreate(_params: unknown): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export function stripeInvoiceItemsCreate(
-  params: Stripe.InvoiceItemCreateParams,
-) {
-  return getStripeClient().invoiceItems.create(params);
+export function stripeInvoiceItemsCreate(_params: unknown): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export function stripeInvoicesFinalizeInvoice(invoiceId: string) {
-  return getStripeClient().invoices.finalizeInvoice(invoiceId);
+export function stripeInvoicesFinalizeInvoice(_invoiceId: string): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export function stripeInvoicesPay(
-  invoiceId: string,
-  params: Stripe.InvoicePayParams,
-) {
-  return getStripeClient().invoices.pay(invoiceId, params);
+export function stripeInvoicesPay(_invoiceId: string, _params: unknown): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
-export function stripeCouponsCreate(params: Stripe.CouponCreateParams) {
-  return getStripeClient().coupons.create(params);
+export function stripeCouponsCreate(_params: unknown): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
 
 export function stripePromotionCodesCreate(
-  params: Stripe.PromotionCodeCreateParams,
-  options?: Stripe.RequestOptions,
-) {
-  return getStripeClient().promotionCodes.create(params, options);
+  _params: unknown,
+  _options?: unknown,
+): never {
+  throw new Error("Stripe is not available in self-hosted mode");
 }
