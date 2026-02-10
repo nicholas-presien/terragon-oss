@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  devcontainer:
+    build:
+      context: ../..
+      dockerfile: .devcontainer/Dockerfile
+
+    volumes:
+      - ../..:/home/node/workspace:cached
+      - terragon-packages-node-modules:/home/node/workspace/node_modules
+      - terragon-pnpm-store:/home/node/.local/share/pnpm/store
+      - /var/run/docker.sock:/var/run/docker.sock
+
+    command: sleep infinity
+
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/terragon
+      - REDIS_URL=redis://redis:6379
+      - REDIS_HTTP_URL=http://serverless-redis-http:80
+      - NODE_ENV=development
+      - POSTGRES_PORT=5432
+      - REDIS_PORT=6379
+      - REDIS_HTTP_PORT=8079
+      - REDIS_HTTP_TOKEN=redis_dev_token
+      - ENV=dev
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      serverless-redis-http:
+        condition: service_started
+
+    network_mode: service:postgres
+
+volumes:
+  terragon-packages-node-modules:
+  terragon-pnpm-store:

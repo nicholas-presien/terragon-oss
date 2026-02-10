@@ -1,0 +1,119 @@
+{
+  "name": "Terragon Development",
+  "dockerComposeFile": [
+    "../packages/dev-env/docker-compose.yml",
+    "docker-compose.yml"
+  ],
+  "service": "devcontainer",
+  "workspaceFolder": "/home/node/workspace",
+
+  "features": {
+    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+  },
+
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "typescript.tsdk": "node_modules/typescript/lib",
+        "typescript.enablePromptUseWorkspaceTsdk": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.codeActionsOnSave": {
+          "source.fixAll.eslint": "explicit"
+        },
+        "files.watcherExclude": {
+          "**/.git/objects/**": true,
+          "**/.git/subtree-cache/**": true,
+          "**/node_modules/**": true,
+          "**/.next/**": true,
+          "**/dist/**": true
+        },
+        "tailwindCSS.experimental.classRegex": [
+          ["cva\\(([^)]*)\\)", "[\"'`]([^\"'`]*).*?[\"'`]"],
+          ["cn\\(([^)]*)\\)", "(?:'|\"|`)([^']*)(?:'|\"|`)"]
+        ]
+      },
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "ms-azuretools.vscode-docker",
+        "orta.vscode-jest",
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "eamodio.gitlens",
+        "ms-vscode.vscode-typescript-next",
+        "usernamehw.errorlens",
+        "YoavBls.pretty-ts-errors",
+        "Prisma.prisma",
+        "unifiedjs.vscode-mdx"
+      ]
+    }
+  },
+
+  "forwardPorts": [3000, 3001, 1999, 5432, 6379, 8079, 4040, 12111, 9229],
+
+  "portsAttributes": {
+    "3000": {
+      "label": "Frontend (Next.js)",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "Documentation",
+      "onAutoForward": "silent"
+    },
+    "1999": {
+      "label": "Broadcast (PartyKit)",
+      "onAutoForward": "silent"
+    },
+    "5432": {
+      "label": "PostgreSQL",
+      "onAutoForward": "silent"
+    },
+    "6379": {
+      "label": "Redis",
+      "onAutoForward": "silent"
+    },
+    "8079": {
+      "label": "Redis HTTP",
+      "onAutoForward": "silent"
+    },
+    "4040": {
+      "label": "ngrok Inspector",
+      "onAutoForward": "openBrowserOnce"
+    },
+    "12111": {
+      "label": "Stripe Webhook Listener",
+      "onAutoForward": "silent"
+    },
+    "9229": {
+      "label": "Node.js Debugger",
+      "onAutoForward": "silent"
+    }
+  },
+
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "postStartCommand": "bash .devcontainer/post-start.sh",
+
+  "remoteUser": "node",
+  "containerEnv": {
+    "DATABASE_URL": "postgresql://postgres:postgres@postgres:5432/terragon",
+    "REDIS_URL": "redis://redis:6379",
+    "REDIS_HTTP_URL": "http://serverless-redis-http:80",
+    "NODE_ENV": "development",
+    "POSTGRES_PORT": "5432",
+    "REDIS_PORT": "6379",
+    "REDIS_HTTP_PORT": "8079",
+    "REDIS_HTTP_TOKEN": "redis_dev_token",
+    "ENV": "dev"
+  },
+
+  "mounts": [
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.gitconfig,target=/home/node/.gitconfig,type=bind,consistency=cached",
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.ssh,target=/home/node/.ssh,type=bind,consistency=cached",
+    "source=terragon-packages-node-modules,target=${containerWorkspaceFolder}/node_modules,type=volume",
+    "source=terragon-pnpm-store,target=/home/node/.local/share/pnpm/store,type=volume"
+  ],
+
+  "runArgs": ["--init"]
+}
