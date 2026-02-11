@@ -1,8 +1,9 @@
-import { eq, sql, desc } from "drizzle-orm";
+import { eq, sql, desc, and } from "drizzle-orm";
 import { DB } from "../db";
 import * as schema from "../db/schema";
 import { publishBroadcastUserMessage } from "../broadcast-server";
 import { UserInfoServerSide, UserSettings } from "../db/types";
+import { decryptTokenWithBackwardsCompatibility } from "@terragon/utils/encryption";
 
 export async function getGitHubUserAccessTokenOrThrow({
   db,
@@ -13,10 +14,29 @@ export async function getGitHubUserAccessTokenOrThrow({
   userId: string;
   encryptionKey: string;
 }) {
-  // Note: GitHub OAuth is not available in self-hosted mode
-  // GitHub App authentication should be used instead via installation tokens
-  throw new Error(
-    "GitHub OAuth is not available in self-hosted mode. Use GitHub App authentication instead.",
+  const githubAccounts = await db
+    .select()
+    .from(schema.account)
+    .where(
+      and(
+        eq(schema.account.userId, userId),
+        eq(schema.account.providerId, "github"),
+      ),
+    )
+    .execute();
+  if (githubAccounts.length === 0) {
+    throw new Error("No GitHub account found");
+  }
+  const githubAccount = githubAccounts[0]!;
+
+  if (!githubAccount.accessToken) {
+    throw new Error("No GitHub access token found");
+  }
+
+  // Decrypt the token if it's encrypted, otherwise return as-is (backwards compatibility)
+  return decryptTokenWithBackwardsCompatibility(
+    githubAccount.accessToken,
+    encryptionKey,
   );
 }
 

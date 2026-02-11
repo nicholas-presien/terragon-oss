@@ -1,23 +1,8 @@
-// Auth client stub for self-hosted mode - Better Auth has been removed.
-// No-op methods to satisfy any remaining client-side references.
+export async function signOut() {
+  await fetch("/api/auth/signout", { method: "POST" });
+  window.location.href = "/";
+}
 
-export const authClient = {
-  signOut: async () => {},
-  signIn: {
-    social: async () => {},
-    magicLink: async () => {},
-  },
-  admin: {
-    impersonateUser: async () => {},
-    stopImpersonating: async () => {},
-  },
-  useSession: () => ({
-    data: null,
-    isPending: false,
-    error: null,
-  }),
-  subscription: {
-    upgrade: async () => {},
-    list: async () => ({ data: [] }),
-  },
-};
+export function useSession() {
+  return { data: null, isPending: false };
+}

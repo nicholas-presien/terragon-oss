@@ -1,14 +1,13 @@
 "use server";
 
 import * as z from "zod/v4";
-import { auth } from "@/lib/auth";
+import { setUserRole, listUsersByEmail } from "@/lib/auth-utils";
 import { adminOnly, adminOnlyAction } from "@/lib/auth-server";
 import { db } from "@/lib/db";
 import { User, UserFlags } from "@terragon/shared";
 import { getRecentUsersForAdmin, getUser } from "@terragon/shared/model/user";
 import { eq } from "drizzle-orm";
 import * as schema from "@terragon/shared/db/schema";
-import { headers } from "next/headers";
 import { updateUserFlags as updateUserFlagsModel } from "@terragon/shared/model/user-flags";
 import { sql } from "drizzle-orm";
 import { UserFacingError } from "@/lib/server-actions";
@@ -31,13 +30,7 @@ export const changeUserRole = adminOnly(async function changeUserRole(
   if (adminUser.id === userId && role !== "admin") {
     throw new Error("Cannot remove yourself from admin role");
   }
-  await auth.api.setRole({
-    headers: await headers(),
-    body: {
-      userId,
-      role,
-    },
-  });
+  await setUserRole(userId, role);
 });
 
 export const searchUsers = adminOnly(async function searchUsers(
@@ -52,18 +45,11 @@ export const searchUsers = adminOnly(async function searchUsers(
       return [userOrNull];
     }
   }
-  // @ts-expect-error - Better Auth API type mismatch
-  const users = await auth.api.listUsers({
-    headers: await headers(),
-    query: {
-      limit: 10,
-      searchOperator: "contains",
-      searchField: "email",
-      searchValue: query,
-    },
+  const users = await listUsersByEmail({
+    limit: 10,
+    searchValue: query,
   });
-  // @ts-expect-error - Better Auth API type mismatch
-  return users.users;
+  return users;
 });
 
 // Ban/unban functionality removed - not needed in self-hosted mode

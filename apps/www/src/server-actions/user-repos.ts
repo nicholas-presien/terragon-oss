@@ -63,8 +63,24 @@ export const getUserRepos = userOnlyAction(
         }
       }
     } catch (appError) {
-      console.warn("Failed to get app installations or user info:", appError);
+      // GitHub App not configured or token not authorized for app installations.
+      // Fall back to listing repos via the user's OAuth token.
     }
+
+    // Fallback: list repos the user has push access to via their OAuth token
+    try {
+      const repos = await octokit.paginate(
+        octokit.rest.repos.listForAuthenticatedUser,
+        { per_page: 100, sort: "pushed", direction: "desc" },
+      );
+      const filteredRepos = repos.filter(
+        (repo) => repo.permissions?.push === true,
+      );
+      return { repos: filteredRepos };
+    } catch (fallbackError) {
+      console.warn("Failed to list user repos via OAuth token:", fallbackError);
+    }
+
     return { repos: [] };
   },
   { defaultErrorMessage: "An unexpected error occurred" },

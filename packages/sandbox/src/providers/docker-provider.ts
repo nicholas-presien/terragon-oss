@@ -14,6 +14,7 @@ const DEFAULT_DIR = `/${HOME_DIR}`;
 const REPO_DIR = "repo";
 const BASE_IMAGE = "ghcr.io/terragon-labs/containers-test";
 const SLEEP_MS = 60 * 60 * 1000; // 1 hour
+const SHARED_NETWORK = "dev-env_terragon-dev";
 
 const CONTAINER_PREFIX = "terragon-sandbox";
 const TEST_CONTAINER_PREFIX = `${CONTAINER_PREFIX}-test`;
@@ -273,7 +274,7 @@ export class DockerProvider implements ISandboxProvider {
     const containerName = `${prefix}-${dateStr}-${timeStr}-${nanoid()}`;
     try {
       // Create and start container
-      const createCommand = `docker run -d --name ${containerName} ${envFlags} -w ${DEFAULT_DIR} ${BASE_IMAGE} tail -f /dev/null`;
+      const createCommand = `docker run -d --name ${containerName} --network ${SHARED_NETWORK} ${envFlags} -w ${DEFAULT_DIR} ${BASE_IMAGE} tail -f /dev/null`;
       const containerId = execSync(createCommand, { encoding: "utf8" }).trim();
       const dockerSession = new DockerSession(containerId);
       return dockerSession;

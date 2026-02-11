@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/command";
 import { Input } from "@/components/ui/input";
 import { searchUsers } from "@/server-actions/admin/user";
-import { User } from "better-auth";
+import { User } from "@terragon/shared";
 
 export function UserSearch({
   onSelectUser,

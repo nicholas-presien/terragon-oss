@@ -1,3 +1,4 @@
+import { cookies, headers } from "next/headers";
 import { db } from "@/lib/db";
 import {
   User,
@@ -21,23 +22,58 @@ import {
   ServerActionResult,
 } from "./server-actions";
 import { getUserCredentials } from "@/server-lib/user-credentials";
-import { DEFAULT_USER_ID, DEFAULT_USER, DEFAULT_SESSION } from "./default-user";
+import {
+  getSessionWithUser,
+  getSessionCookieName,
+  refreshSessionIfNeeded,
+  verifyApiKey,
+} from "@/lib/auth-utils";
 
 export const getSessionOrNull = cache(
   async (): Promise<{
     session: Session;
     user: User;
   } | null> => {
-    return { session: DEFAULT_SESSION, user: DEFAULT_USER };
+    // 1. Check Bearer token (for API/broadcast calls)
+    const headerStore = await headers();
+    const authHeader = headerStore.get("Authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      const token = authHeader.slice(7);
+      const result = await getSessionWithUser(token);
+      if (result) {
+        await refreshSessionIfNeeded(
+          result.session.id,
+          result.session.expiresAt,
+        );
+        return result;
+      }
+    }
+
+    // 2. Check session cookie
+    const cookieStore = await cookies();
+    const sessionToken = cookieStore.get(getSessionCookieName())?.value;
+    if (!sessionToken) return null;
+
+    const result = await getSessionWithUser(sessionToken);
+    if (!result) return null;
+
+    await refreshSessionIfNeeded(result.session.id, result.session.expiresAt);
+
+    return result;
   },
 );
 
 export async function getUserIdOrNull(): Promise<User["id"] | null> {
-  return DEFAULT_USER_ID;
+  const session = await getSessionOrNull();
+  return session?.user.id ?? null;
 }
 
 export async function getUserIdOrRedirect(): Promise<User["id"]> {
-  return DEFAULT_USER_ID;
+  const userId = await getUserIdOrNull();
+  if (!userId) {
+    redirect("/login");
+  }
+  return userId;
 }
 
 export async function getUserIdOrNullFromDaemonToken(
@@ -47,14 +83,21 @@ export async function getUserIdOrNullFromDaemonToken(
   if (!token) {
     return null;
   }
-  if (token === env.INTERNAL_SHARED_SECRET) {
-    return DEFAULT_USER_ID;
+  const result = await verifyApiKey(token);
+  if (!result.valid || !result.userId) {
+    console.log("Unauthorized", "valid", result.valid, "userId", result.userId);
+    return null;
   }
-  return null;
+  return result.userId;
 }
 
 export async function getUserOrNull(): Promise<User | null> {
-  return DEFAULT_USER;
+  const session = await getSessionOrNull();
+  const user = session?.user ?? null;
+  if (!user) {
+    return null;
+  }
+  return user;
 }
 
 type UserInfo = {
@@ -72,6 +115,10 @@ type UserInfo = {
 };
 
 export const getUserInfoOrNull = cache(async (): Promise<UserInfo | null> => {
+  const session = await getSessionOrNull();
+  if (!session) {
+    return null;
+  }
   const [
     userSettings,
     userFlags,
@@ -81,31 +128,31 @@ export const getUserInfoOrNull = cache(async (): Promise<UserInfo | null> => {
   ] = await Promise.all([
     getUserSettings({
       db,
-      userId: DEFAULT_USER_ID,
+      userId: session.user.id,
     }),
     getUserFlags({
       db,
-      userId: DEFAULT_USER_ID,
+      userId: session.user.id,
     }),
     getFeatureFlagsForUser({
       db,
-      userId: DEFAULT_USER_ID,
+      userId: session.user.id,
     }),
     getUserCookies(),
     getUserCredentials({
-      userId: DEFAULT_USER_ID,
+      userId: session.user.id,
     }),
   ]);
   return {
-    session: DEFAULT_SESSION,
-    user: DEFAULT_USER,
+    ...session,
     userSettings,
     userFlags: getUserFlagsNormalized(userFlags),
     userFeatureFlags,
     userCookies,
     userCredentials,
     impersonation: {
-      isImpersonating: false,
+      isImpersonating: !!session.session.impersonatedBy,
+      impersonatedBy: session.session.impersonatedBy || undefined,
     },
   };
 });
@@ -113,24 +160,39 @@ export const getUserInfoOrNull = cache(async (): Promise<UserInfo | null> => {
 export async function getUserInfoOrRedirect(): Promise<UserInfo> {
   const userInfo = await getUserInfoOrNull();
   if (!userInfo) {
-    redirect("/");
+    redirect("/login");
   }
   return userInfo;
 }
 
 async function getAdminUserOrNull(): Promise<User | null> {
-  return DEFAULT_USER;
+  const user = await getUserOrNull();
+  if (!user) {
+    return null;
+  }
+  if (user.role !== "admin") {
+    return null;
+  }
+  return user;
 }
 
 export async function getAdminUserOrThrow(): Promise<User> {
-  return DEFAULT_USER;
+  const user = await getAdminUserOrNull();
+  if (!user) {
+    throw new UserFacingError("Unauthorized");
+  }
+  return user;
 }
 
 function userOnly<T extends Array<any>, U>(
   callback: (userId: string, ...args: T) => Promise<U>,
 ) {
   const wrapped = async (...args: T): Promise<U> => {
-    return await callback(DEFAULT_USER_ID, ...args);
+    const userId = await getUserIdOrNull();
+    if (!userId) {
+      throw new UserFacingError("Unauthorized");
+    }
+    return await callback(userId, ...args);
   };
   // For testing purposes
   wrapped.userOnly = true;
@@ -160,7 +222,8 @@ export function adminOnly<T extends Array<any>, U>(
   callback: (adminUser: User, ...args: T) => Promise<U>,
 ) {
   const wrapped = async (...args: T): Promise<U> => {
-    return await callback(DEFAULT_USER, ...args);
+    const adminUser = await getAdminUserOrThrow();
+    return await callback(adminUser, ...args);
   };
   // For testing purposes
   wrapped.adminOnly = true;
@@ -187,7 +250,11 @@ export function adminOnlyAction<T extends Array<any>, U>(
 }
 
 export async function getCurrentUser(): Promise<User> {
-  return DEFAULT_USER;
+  const user = await getUserOrNull();
+  if (!user) {
+    throw new UserFacingError("Unauthorized");
+  }
+  return user;
 }
 
 function getUserFlagsNormalized(userFlags: UserFlags) {

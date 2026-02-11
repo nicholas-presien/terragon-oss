@@ -15,6 +15,8 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    networks:
+      - terragon-dev
   redis:
     image: redis:7-alpine
     container_name: terragon_redis_${ENV:-dev}
@@ -22,6 +24,8 @@ services:
       - "${REDIS_PORT:-6379}:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - terragon-dev
   serverless-redis-http:
     container_name: terragon_redis_http_${ENV:-dev}
     ports:
@@ -31,6 +35,11 @@ services:
       SRH_MODE: env
       SRH_TOKEN: ${REDIS_HTTP_TOKEN:-redis_dev_token}
       SRH_CONNECTION_STRING: "redis://redis:6379"
+    networks:
+      - terragon-dev
+networks:
+  terragon-dev:
+    name: dev-env_terragon-dev
 volumes:
   postgres_data:
   redis_data:

@@ -7,6 +7,8 @@ import {
   devDefaultIsAnthropicDownApiSecret,
   devDefaultRedisUrl,
   devDefaultRedisToken,
+  devDefaultBetterAuthSecret,
+  devDefaultBetterAuthUrl,
 } from "./common";
 
 export const env = envsafe({
@@ -18,6 +20,12 @@ export const env = envsafe({
   }),
   REDIS_TOKEN: str({
     devDefault: devDefaultRedisToken,
+  }),
+  BETTER_AUTH_SECRET: str({
+    devDefault: devDefaultBetterAuthSecret,
+  }),
+  BETTER_AUTH_URL: str({
+    devDefault: devDefaultBetterAuthUrl,
   }),
   IS_ANTHROPIC_DOWN_URL: str({
     devDefault: devDefaultIsAnthropicDownUrl,
@@ -87,6 +95,9 @@ export const env = envsafe({
 
   // Port used by the CLI tool for auth
   CLI_PORT: num({ default: 8742 }),
+
+  // Loops (marketing email & events)
+  LOOPS_API_KEY: str({ allowEmpty: true, default: "" }),
 
   // Others
   RESEND_API_KEY: str({ allowEmpty: true, default: "" }),

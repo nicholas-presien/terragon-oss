@@ -10,12 +10,14 @@ To just get the app running and see the UI:
 # 1. Make sure Docker containers are running
 pnpm -C packages/dev-env docker-up-dev
 
-# 2. Initialize the database (first time only)
-bash scripts/init-dev-db.sh
+# 2. Push the database schema (first time, or after schema changes)
+cd packages/shared && npx drizzle-kit push && cd ../..
 
 # 3. Start the development server
 pnpm dev
 ```
+
+> **Note:** Environment variables must be placed in `apps/www/.env.development.local` (not the workspace root) for Next.js to pick them up.
 
 **What works:**
 
@@ -66,13 +68,32 @@ DAYTONA_API_KEY=...  # Get from https://daytona.io
 - ✅ Run code in containers
 - ✅ Execute agent tasks
 
-### 3. GitHub Integration
+### 3. GitHub Authentication (Required for Login)
 
 **Required:**
 
 ```bash
 GITHUB_CLIENT_ID=...
 GITHUB_CLIENT_SECRET=...
+```
+
+**Setup:** Create a GitHub OAuth App at https://github.com/settings/developers
+
+1. Click **New OAuth App**
+2. Set **Homepage URL** to `http://localhost:3000`
+3. Set **Authorization callback URL** to `http://localhost:3000/api/auth/github/callback`
+4. Copy the **Client ID** and generate a **Client Secret**
+
+**Enables:**
+
+- ✅ GitHub OAuth login
+- ✅ Repository access (via user's GitHub token)
+
+### 4. GitHub App (Optional - for advanced integration)
+
+**Required:**
+
+```bash
 GITHUB_APP_ID=...
 GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n..."
 GITHUB_WEBHOOK_SECRET=...  # Generate with: openssl rand -hex 32
@@ -83,12 +104,10 @@ NEXT_PUBLIC_GITHUB_APP_NAME=your-app-name
 
 **Enables:**
 
-- ✅ GitHub OAuth login
-- ✅ Repository access
 - ✅ Automated commits and PRs
 - ✅ Webhook integration
 
-### 4. File Uploads & Attachments
+### 5. File Uploads & Attachments
 
 **Required:**
 
@@ -109,7 +128,7 @@ R2_PUBLIC_URL=...
 - ✅ Attach files to messages
 - ✅ Store artifacts
 
-### 5. Commit Message Generation
+### 6. Commit Message Generation
 
 **Required:**
 
@@ -122,7 +141,7 @@ OPENAI_API_KEY=sk-...  # Get from https://platform.openai.com/api-keys
 - ✅ AI-generated commit messages
 - ✅ PR description generation
 
-### 6. Remote Sandbox Communication
+### 7. Remote Sandbox Communication
 
 **Required:**
 
@@ -142,7 +161,7 @@ CUSTOM_TUNNEL_COMMAND="cloudflared tunnel --url localhost:3000"
 - ✅ Remote sandboxes can ping back to your local server
 - ✅ Real-time updates from agents
 
-### 7. Email Notifications (Optional)
+### 8. Email Notifications (Optional)
 
 **Required:**
 
@@ -155,7 +174,7 @@ RESEND_API_KEY=...  # Get from https://resend.com
 - ✅ Send transactional emails
 - ✅ User onboarding emails
 
-### 8. Slack Integration (Optional)
+### 9. Slack Integration (Optional)
 
 **Required:**
 
@@ -172,17 +191,19 @@ SLACK_SIGNING_SECRET=...
 
 ## Recommended Development Setup
 
-For a good development experience with core features:
+For a good development experience with core features, add these to `apps/www/.env.development.local`:
 
 ```bash
-# Essential
+# Required for login
+GITHUB_CLIENT_ID=...      # From GitHub OAuth App
+GITHUB_CLIENT_SECRET=...
+
+# Essential for agents
 ANTHROPIC_API_KEY=...     # For Claude agents
 E2B_API_KEY=...           # For sandboxes
 OPENAI_API_KEY=...        # For commit messages
 
-# Important (if using GitHub features)
-GITHUB_CLIENT_ID=...
-GITHUB_CLIENT_SECRET=...
+# Optional (for advanced GitHub features)
 GITHUB_APP_ID=...
 GITHUB_APP_PRIVATE_KEY=...
 GITHUB_WEBHOOK_SECRET=...
@@ -200,11 +221,11 @@ R2_PUBLIC_URL=...
 
 ## Quick Start Order
 
-1. **Start with minimal** - No env vars, just see the UI
-2. **Add Claude** - Get `ANTHROPIC_API_KEY` to test AI features
-3. **Add E2B** - Get `E2B_API_KEY` to create sandboxes
-4. **Add GitHub** - Set up GitHub App for full integration
-5. **Add others** - R2, ngrok, etc. as needed
+1. **Set up infrastructure** - Run Docker containers and push DB schema
+2. **Add GitHub OAuth** - Create OAuth App, set `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` to enable login
+3. **Add Claude** - Get `ANTHROPIC_API_KEY` to test AI features
+4. **Add E2B** - Get `E2B_API_KEY` to create sandboxes
+5. **Add others** - R2, ngrok, GitHub App, etc. as needed
 
 ## Getting API Keys
 

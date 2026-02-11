@@ -23,7 +23,8 @@
       "Bash(ps:*)",
       "mcp__ide__getDiagnostics",
       "Read(//home/node/workspace/**)",
-      "Bash(cut:*)"
+      "Bash(cut:*)",
+      "Bash(node:*)"
     ]
   },
   "enableAllProjectMcpServers": false

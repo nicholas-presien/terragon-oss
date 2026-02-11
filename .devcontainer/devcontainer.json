@@ -1,14 +1,19 @@
 {
   "name": "Terragon Development",
-  "dockerComposeFile": [
-    "../packages/dev-env/docker-compose.yml",
-    "docker-compose.yml"
-  ],
-  "service": "devcontainer",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
   "workspaceFolder": "/home/node/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/node/workspace,type=bind,consistency=cached",
+  "overrideCommand": true,
 
   "features": {
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "moby": true,
+      "dockerDashComposeVersion": "v2"
+    }
   },
 
   "customizations": {
@@ -93,15 +98,16 @@
 
   "remoteUser": "node",
   "containerEnv": {
-    "DATABASE_URL": "postgresql://postgres:postgres@postgres:5432/terragon",
-    "REDIS_URL": "redis://redis:6379",
-    "REDIS_HTTP_URL": "http://serverless-redis-http:80",
+    "DATABASE_URL": "postgresql://postgres:postgres@localhost:5432/terragon",
+    "REDIS_URL": "redis://localhost:6379",
+    "REDIS_HTTP_URL": "http://localhost:8079",
     "NODE_ENV": "development",
     "POSTGRES_PORT": "5432",
     "REDIS_PORT": "6379",
     "REDIS_HTTP_PORT": "8079",
     "REDIS_HTTP_TOKEN": "redis_dev_token",
-    "ENV": "dev"
+    "ENV": "dev",
+    "PGDATA": "/home/node/.postgres/data"
   },
 
   "mounts": [
@@ -111,5 +117,5 @@
     "source=terragon-pnpm-store,target=/home/node/.local/share/pnpm/store,type=volume"
   ],
 
-  "runArgs": ["--init"]
+  "runArgs": ["--init", "--privileged"]
 }

@@ -1,21 +1,17 @@
 "use server";
 
-import { auth } from "@/lib/auth";
 import { nanoid } from "nanoid/non-secure";
 import { userOnlyAction } from "@/lib/auth-server";
+import { createApiKey } from "@/lib/auth-utils";
 
 export const createCliApiToken = userOnlyAction(
   async function createCliApiToken(userId: string) {
-    // @ts-expect-error - Better Auth API type mismatch
-    const cliApiKey = await auth.api.createApiKey({
-      body: {
-        name: `cli-${nanoid()}`,
-        expiresIn: 60 * 60 * 24 * 30, // 30 days,
-        userId,
-      },
+    const result = await createApiKey({
+      name: `cli-${nanoid()}`,
+      expiresIn: 60 * 60 * 24 * 30, // 30 days
+      userId,
     });
-    // @ts-expect-error - Better Auth API type mismatch
-    return cliApiKey.key;
+    return result.key;
   },
   { defaultErrorMessage: "Failed to create CLI API token" },
 );

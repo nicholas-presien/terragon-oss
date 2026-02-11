@@ -4,23 +4,10 @@ import * as schema from "../db/schema";
 
 type UserInner = typeof schema.user.$inferSelect;
 
-// In better-auth, some of the fields becoming optional, so we need to make them optional here
-// to make typescript happy.
 type WithOptional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>;
 export type User = WithOptional<UserInner, "image" | "role">;
 
-// Session type removed - no longer using session-based auth in self-hosted mode
-export type Session = {
-  id: string;
-  expiresAt: Date;
-  token: string;
-  createdAt: Date;
-  updatedAt: Date;
-  ipAddress: string | null;
-  userAgent: string | null;
-  userId: string;
-  impersonatedBy: string | null;
-};
+export type Session = typeof schema.session.$inferSelect;
 export type ThreadVisibility = "private" | "link" | "repo";
 
 export type ClaudeOrganizationType =

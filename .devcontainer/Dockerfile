@@ -1,6 +1,6 @@
-FROM mcr.microsoft.com/devcontainers/typescript-node:20-bookworm
+FROM mcr.microsoft.com/devcontainers/typescript-node:22-bookworm
 
-# Install system dependencies
+# Install system dependencies (only clients, servers will run in Docker containers)
 RUN apt-get update && export DEBIAN_FRONTEND=noninteractive \
     && apt-get install -y --no-install-recommends \
         postgresql-client \
